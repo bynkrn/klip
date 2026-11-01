@@ -1,0 +1,7 @@
+const {test}=require('node:test'),assert=require('node:assert/strict');
+const {trashClips}=require('../src/library-actions');
+function fixture(){const known=new Map([['a',{id:'a',file:'C:/clips/a.mp4'}],['b',{id:'b',file:'C:/clips/b.mp4'}]]),calls=[];return{known,calls,trashItem:async file=>calls.push(file),inspect:async()=>({isFile:()=>true})};}
+test('Bulk delete sends only registered files to Recycle Bin once',async()=>{const f=fixture(),r=await trashClips(['a','b','a'],f);assert.deepEqual(f.calls,['C:/clips/a.mp4','C:/clips/b.mp4']);assert.deepEqual(r.deleted,['a','b']);assert.deepEqual(r.failed,[]);assert.equal(f.known.size,0);});
+test('Unknown identifiers reject the complete request before touching any file',async()=>{const f=fixture();await assert.rejects(trashClips(['a','C:/private/file.mp4'],f),/bulunamadı/);assert.equal(f.calls.length,0);assert.equal(f.known.size,2);});
+test('Partial deletion failure preserves failed registered clips',async()=>{const f=fixture();f.trashItem=async file=>{if(file.endsWith('b.mp4'))throw new Error('Dosya kullanımda');f.calls.push(file);};const r=await trashClips(['a','b'],f);assert.deepEqual(r.deleted,['a']);assert.deepEqual(r.failed,[{id:'b',error:'Dosya kullanımda'}]);assert(f.known.has('b'));assert(!f.known.has('a'));});
+test('A folder substituted for a clip is never trashed recursively',async()=>{const f=fixture();f.inspect=async()=>({isFile:()=>false});const r=await trashClips(['a'],f);assert.equal(f.calls.length,0);assert.equal(r.failed.length,1);assert(f.known.has('a'));});

@@ -1,0 +1,12 @@
+// Read-only endpoint/session diagnostics; never changes a user's audio controls.
+#include <windows.h>
+#include <mmdeviceapi.h>
+#include <audiopolicy.h>
+#include <functiondiscoverykeys_devpkey.h>
+#include <wrl/client.h>
+#include <iostream>
+#include "json.hpp"
+using Microsoft::WRL::ComPtr;
+using nlohmann::json;
+static std::string utf8(const wchar_t *s){if(!s)return{};int n=WideCharToMultiByte(CP_UTF8,0,s,-1,nullptr,0,nullptr,nullptr);std::string r(n,'\0');WideCharToMultiByte(CP_UTF8,0,s,-1,r.data(),n,nullptr,nullptr);r.pop_back();return r;}
+int main(){CoInitializeEx(nullptr,COINIT_MULTITHREADED);ComPtr<IMMDeviceEnumerator> e;if(FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator),nullptr,CLSCTX_ALL,IID_PPV_ARGS(&e))))return 1;ComPtr<IMMDeviceCollection> devices;if(FAILED(e->EnumAudioEndpoints(eRender,DEVICE_STATE_ACTIVE,&devices)))return 2;UINT count=0;devices->GetCount(&count);json result=json::array();for(UINT i=0;i<count;++i){ComPtr<IMMDevice> device;devices->Item(i,&device);LPWSTR id=nullptr;device->GetId(&id);json endpoint={{"endpointId",utf8(id)},{"sessions",json::array()}};CoTaskMemFree(id);ComPtr<IPropertyStore> props;if(SUCCEEDED(device->OpenPropertyStore(STGM_READ,&props))){PROPVARIANT p;PropVariantInit(&p);if(SUCCEEDED(props->GetValue(PKEY_Device_FriendlyName,&p))&&p.vt==VT_LPWSTR)endpoint["name"]=utf8(p.pwszVal);PropVariantClear(&p);}ComPtr<IAudioSessionManager2> manager;if(SUCCEEDED(device->Activate(__uuidof(IAudioSessionManager2),CLSCTX_ALL,nullptr,&manager))){ComPtr<IAudioSessionEnumerator> sessions;if(SUCCEEDED(manager->GetSessionEnumerator(&sessions))){int total=0;sessions->GetCount(&total);for(int k=0;k<total;++k){ComPtr<IAudioSessionControl> control;sessions->GetSession(k,&control);ComPtr<IAudioSessionControl2> c;ComPtr<ISimpleAudioVolume> v;control.As(&c);control.As(&v);DWORD pid=0;AudioSessionState state;control->GetState(&state);if(c)c->GetProcessId(&pid);json session={{"pid",pid},{"state",(int)state}};if(v){BOOL muted=FALSE;float volume=0;v->GetMute(&muted);v->GetMasterVolume(&volume);session["muted"]=(bool)muted;session["volume"]=volume;}HANDLE process=OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,FALSE,pid);if(process){wchar_t path[32768];DWORD length=32768;if(QueryFullProcessImageNameW(process,0,path,&length))session["executable"]=utf8(wcsrchr(path,L'\\')?wcsrchr(path,L'\\')+1:path);CloseHandle(process);}endpoint["sessions"].push_back(session);}}}result.push_back(endpoint);}std::cout<<result.dump()<<std::endl;}

@@ -1,0 +1,12 @@
+/artifacts/
+/screen-debug/
+/method-debug/
+/debug-dxgi/
+/KlipAvSyncProbe.exe
+/probe.obj
+/*.exe
+/*.obj
+/latest-run.txt
+/latest-baseline.txt
+/latest-screen-baseline.txt
+/__pycache__/

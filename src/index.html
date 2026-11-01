@@ -1,0 +1,1047 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: klipmedia:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'none';"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Klip</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#19171d}#sunset-klip-organized{max-width:none!important;height:100vh!important;border:0!important;border-radius:0!important}.sk-export-audio{max-height:180px;overflow:auto}.sk-topbar{-webkit-app-region:drag}.sk-chrome{-webkit-app-region:no-drag;gap:0!important;display:flex!important}.sk-chrome button{width:44px;height:40px}</style><script src="i18n.js"></script><script src="lucide.js"></script></head><body><style>
+#sunset-klip-organized {
+  --sk-bg:#19171d;--sk-panel:#211d25;--sk-raised:#2a252e;--sk-line:#353039;--sk-text:#f4efeb;--sk-muted:#b9afb6;--sk-amber:#ffb32e;--sk-orange:#ff873d;--sk-ink:#241800;--sk-soft:#ffb32e14;
+  color-scheme:dark;font-family:Inter,"Segoe UI",Arial,sans-serif;font-size:14px;line-height:1.45;color:var(--sk-text);background:var(--sk-bg);width:100%;max-width:1920px;height:clamp(800px,56.25vw,1080px);margin:0 auto;display:grid;grid-template-rows:56px auto minmax(0,1fr);overflow:hidden;position:relative;border:1px solid var(--sk-line);border-radius:8px;
+}
+#sunset-klip-organized *{box-sizing:border-box;min-width:0}
+#sunset-klip-organized [hidden]{display:none!important}
+#sunset-klip-organized h1,#sunset-klip-organized h2,#sunset-klip-organized h3,#sunset-klip-organized p{margin:0}
+#sunset-klip-organized h1{font-size:24px;font-weight:500;letter-spacing:-.6px}
+#sunset-klip-organized h2{font-size:16px;font-weight:500}
+#sunset-klip-organized button,#sunset-klip-organized input,#sunset-klip-organized select{font:inherit;color:inherit}
+#sunset-klip-organized button,#sunset-klip-organized select,#sunset-klip-organized input[type=checkbox]{touch-action:manipulation}
+#sunset-klip-organized button{border:0}
+#sunset-klip-organized button:disabled{opacity:.42;cursor:not-allowed}
+#sunset-klip-organized svg{flex-shrink:0;width:17px;height:17px}
+#sunset-klip-organized kbd{font:500 12px "Segoe UI",sans-serif;border:1px solid currentColor;border-radius:4px;padding:2px 6px;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sunset-klip-organized select,#sunset-klip-organized input[type=text],#sunset-klip-organized input[type=number]{background:var(--sk-panel);border:1px solid var(--sk-line);border-radius:6px;padding:9px 11px;min-height:38px;max-width:100%}
+#sunset-klip-organized input[type=checkbox],#sunset-klip-organized input[type=range]{accent-color:var(--sk-amber)}
+#sunset-klip-organized input[type=checkbox]{width:16px;height:16px;flex-shrink:0;margin:0}
+#sunset-klip-organized input[type=range]{min-width:0;margin:0}
+#sunset-klip-organized .sk-topbar{display:flex;align-items:center;gap:54px;padding:0 30px;border-bottom:1px solid var(--sk-line);background:var(--sk-panel)}
+#sunset-klip-organized .sk-brand{display:flex;align-items:center;gap:8px;color:var(--sk-amber);font-size:26px;letter-spacing:-1px;font-weight:500;white-space:nowrap}
+#sunset-klip-organized .sk-brand svg{fill:currentColor;width:21px;height:21px}
+#sunset-klip-organized .sk-nav{display:flex;align-self:stretch;gap:12px}
+#sunset-klip-organized .sk-nav button{background:transparent;padding:0 15px;position:relative;color:var(--sk-muted);font-size:14px}
+#sunset-klip-organized .sk-nav button:hover{color:var(--sk-text)}
+#sunset-klip-organized .sk-nav button[aria-selected=true]{color:var(--sk-amber)}
+#sunset-klip-organized .sk-nav button[aria-selected=true]:after{content:"";height:3px;background:var(--sk-amber);position:absolute;bottom:0;left:12px;right:12px;border-radius:3px}
+#sunset-klip-organized .sk-chrome{margin-left:auto;display:flex;gap:27px;color:var(--sk-muted)}
+#sunset-klip-organized .sk-chrome svg{width:13px;height:13px}
+#sunset-klip-organized .sk-title-actions{margin-left:auto;display:flex;align-items:center;align-self:flex-start;gap:10px}
+#sunset-klip-organized .sk-title-actions .sk-chrome{margin-left:0}
+#sunset-klip-organized #sk-update-badge{position:relative;width:30px;height:30px;color:var(--sk-amber);-webkit-app-region:no-drag}
+#sunset-klip-organized .sk-update-dot{position:absolute;right:3px;top:3px;width:6px;height:6px;border-radius:50%;background:var(--sk-amber)}
+#sunset-klip-organized .sk-update-card{max-width:700px;border-top:1px solid var(--sk-line);padding-top:18px}
+#sunset-klip-organized .sk-update-actions{display:flex;gap:9px;flex-wrap:wrap;margin:18px 0}
+#sunset-klip-organized .sk-update-status{font-size:14px;margin:14px 0 6px}
+#sunset-klip-organized .sk-update-meta{font-size:12px;color:var(--sk-muted);margin-top:8px}
+#sunset-klip-organized .sk-update-progress-row{display:flex;align-items:center;gap:10px;font-size:12px;margin-top:14px}
+#sunset-klip-organized .sk-update-progress-row progress{flex:1;min-width:0;height:8px;accent-color:var(--sk-amber)}
+#sunset-klip-organized .sk-update-notes{white-space:pre-wrap;overflow-wrap:anywhere;max-height:155px;overflow:auto;font-size:12px;color:var(--sk-muted);margin-top:14px;scrollbar-width:thin}
+#sunset-klip-organized .sk-update-error{font-size:12px;color:var(--sk-orange);overflow-wrap:anywhere;margin-top:12px}
+#sunset-klip-organized .sk-update-login{padding:14px;background:var(--sk-raised);border-radius:6px;margin-top:14px;font-size:12px}
+#sunset-klip-organized .sk-update-login input{width:160px;letter-spacing:2px;text-align:center;margin:10px 0}
+#sunset-klip-organized .sk-update-login a{color:var(--sk-amber);overflow-wrap:anywhere}
+#sunset-klip-organized #sk-update-dialog{width:min(470px,calc(100% - 28px))}
+#sunset-klip-organized .sk-main{min-height:0;overflow:hidden}
+#sunset-klip-organized .sk-page{height:100%;padding:25px 30px;min-height:0;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--sk-line) transparent}
+#sunset-klip-organized .sk-library{display:flex;flex-direction:column;gap:20px}
+#sunset-klip-organized .sk-page-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-shrink:0}
+#sunset-klip-organized .sk-head-actions{display:flex;align-items:center;gap:15px}
+#sunset-klip-organized .sk-count{font-size:12px;color:var(--sk-muted);white-space:nowrap}
+#sunset-klip-organized .sk-selection-actions{display:flex;align-items:center;gap:7px;white-space:nowrap}
+#sunset-klip-organized #sk-selection-count{font-size:12px;color:var(--sk-amber)}
+#sunset-klip-organized #sk-delete-selected{min-height:30px;padding:5px 9px}
+#sunset-klip-organized .sk-select-check{position:absolute;top:7px;left:7px;z-index:1;width:22px;height:22px;padding:0;border:1px solid var(--sk-line);border-radius:4px;background:var(--sk-panel);display:grid;place-items:center;opacity:0;pointer-events:auto;color:var(--sk-amber);cursor:pointer}
+#sunset-klip-organized .sk-card:hover .sk-select-check,#sunset-klip-organized .sk-card:focus-within .sk-select-check,#sunset-klip-organized .sk-card[data-selected=true] .sk-select-check{opacity:1}
+#sunset-klip-organized .sk-select-check[aria-checked=false] svg{visibility:hidden}
+#sunset-klip-organized .sk-row-leading{display:flex;align-items:center;gap:10px}
+#sunset-klip-organized .sk-row-check{position:static;opacity:1;flex-shrink:0}
+#sunset-klip-organized [data-clip-id]{user-select:none}
+#sunset-klip-organized [data-clip-id] button:not(.sk-card-open):not(.sk-row-open):focus-visible{outline:2px solid var(--sk-amber);outline-offset:3px}
+#sunset-klip-organized .sk-card-open:focus-visible,#sunset-klip-organized .sk-row-open:focus-visible{outline:none}
+#sunset-klip-organized .sk-card[data-selected=false] .sk-card-open:focus-visible .sk-thumb,#sunset-klip-organized tr[data-selected=false] .sk-row-open:focus-visible .sk-row-thumb{outline:2px solid var(--sk-amber);outline-offset:2px}
+#sunset-klip-organized .sk-view-toggle{display:flex;gap:3px;background:var(--sk-panel);border:1px solid var(--sk-line);border-radius:6px;padding:3px}
+#sunset-klip-organized .sk-view-toggle button{width:34px;height:29px;display:grid;place-items:center;border-radius:4px;color:var(--sk-muted);background:transparent}
+#sunset-klip-organized .sk-view-toggle button[aria-pressed=true]{background:var(--sk-soft);color:var(--sk-amber)}
+#sunset-klip-organized .sk-library-body{flex:1;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--sk-line) transparent}
+#sunset-klip-organized .sk-group{margin-bottom:28px}
+#sunset-klip-organized .sk-group h2{font-size:14px;color:var(--sk-muted);margin-bottom:13px}
+#sunset-klip-organized .sk-grid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));column-gap:18px;row-gap:23px;align-content:start}
+#sunset-klip-organized .sk-card{position:relative}
+#sunset-klip-organized .sk-card-open{display:block;width:100%;padding:0;text-align:left;background:transparent;border-radius:5px}
+#sunset-klip-organized .sk-thumb{display:block;position:relative;aspect-ratio:16/9;border-radius:4px;overflow:hidden;background:var(--sk-panel)}
+#sunset-klip-organized .sk-thumb img{width:100%;height:100%;display:block;object-fit:cover}
+#sunset-klip-organized .sk-duration{position:absolute;bottom:3px;right:3px;min-width:53px;height:24px;display:grid;place-items:center;border-radius:3px;background:#171419;color:#f9f5ef;font-size:12px;font-variant-numeric:tabular-nums}
+#sunset-klip-organized .sk-card[data-selected=true] .sk-thumb{box-shadow:inset 0 0 0 2px var(--sk-amber)}
+#sunset-klip-organized .sk-card[data-selected=true] .sk-thumb:after{content:"";position:absolute;inset:0;border:2px solid var(--sk-amber);border-radius:4px;pointer-events:none}
+#sunset-klip-organized .sk-card-open:hover .sk-thumb img{filter:brightness(1.1)}
+#sunset-klip-organized .sk-card-name{display:block;padding-right:34px;margin-top:8px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sunset-klip-organized .sk-card-date{display:block;margin-top:3px;padding-right:34px;font-size:12px;color:var(--sk-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sunset-klip-organized .sk-more{position:absolute;right:0;bottom:10px;width:28px;height:29px;background:transparent;color:var(--sk-muted);display:grid;place-items:center;border-radius:4px}
+#sunset-klip-organized .sk-more:hover{background:var(--sk-raised);color:var(--sk-amber)}
+#sunset-klip-organized .sk-list-wrap{width:100%;overflow:visible}
+#sunset-klip-organized .sk-table{width:100%;min-width:0;table-layout:fixed;border-collapse:collapse;text-align:left;font-size:13px}
+#sunset-klip-organized .sk-table th{position:sticky;top:0;z-index:1;background:var(--sk-bg);color:var(--sk-muted);font-size:12px;font-weight:400;padding:10px 13px;border-bottom:1px solid var(--sk-line)}
+#sunset-klip-organized .sk-table td{padding:7px 13px;border-bottom:1px solid var(--sk-line);white-space:normal;overflow-wrap:anywhere}
+#sunset-klip-organized .sk-table th:first-child{width:43%}
+#sunset-klip-organized .sk-table th:last-child{width:96px}
+#sunset-klip-organized .sk-table td:last-child{padding-left:8px;padding-right:8px}
+#sunset-klip-organized .sk-table tr[data-selected=true]{background:var(--sk-soft)}
+#sunset-klip-organized .sk-table tr[data-selected=true] td:first-child{box-shadow:inset 3px 0 var(--sk-amber)}
+#sunset-klip-organized .sk-row-open{display:flex;align-items:center;gap:19px;background:transparent;text-align:left;width:100%;padding:0}
+#sunset-klip-organized .sk-row-open img{width:96px;height:54px;object-fit:cover;border-radius:3px;flex-shrink:0}
+#sunset-klip-organized .sk-row-thumb{display:block;position:relative;flex-shrink:0;width:96px;height:54px}
+#sunset-klip-organized .sk-row-thumb .sk-duration{min-width:36px;height:17px;font-size:11px;bottom:1px;right:1px;padding:0 2px}
+#sunset-klip-organized .sk-row-name{max-width:350px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sunset-klip-organized .sk-row-actions{display:flex;gap:6px;justify-content:flex-end}
+#sunset-klip-organized .sk-muted{color:var(--sk-muted)}
+#sunset-klip-organized .sk-button{min-height:36px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:8px 13px;background:var(--sk-raised);border:1px solid var(--sk-line);border-radius:6px;font-size:13px;white-space:nowrap}
+#sunset-klip-organized .sk-button:hover{background:var(--sk-line)}
+#sunset-klip-organized .sk-primary{background:linear-gradient(110deg,var(--sk-amber),var(--sk-orange));color:var(--sk-ink);border-color:transparent;font-weight:500}
+#sunset-klip-organized .sk-primary:hover{background:var(--sk-amber)}
+#sunset-klip-organized .sk-ghost{background:transparent;border-color:transparent;color:var(--sk-muted)}
+#sunset-klip-organized .sk-icon-button{width:34px;height:34px;display:grid;place-items:center;background:transparent;color:var(--sk-muted);border-radius:4px;padding:0}
+#sunset-klip-organized .sk-icon-button:hover{background:var(--sk-raised);color:var(--sk-amber)}
+#sunset-klip-organized .sk-library-foot{font-size:11px;color:var(--sk-muted);display:flex;justify-content:space-between;gap:15px;flex-shrink:0}
+#sunset-klip-organized .sk-library-foot span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sunset-klip-organized .sk-trash-page{display:flex;flex-direction:column;gap:18px;overflow:hidden}
+#sunset-klip-organized .sk-trash-hint{font-size:12px;color:var(--sk-muted)}
+#sunset-klip-organized .sk-trash-list{flex:1;min-height:0;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--sk-line) transparent}
+#sunset-klip-organized .sk-trash-row{display:grid;grid-template-columns:26px minmax(0,1fr) 90px 150px auto;align-items:center;gap:14px;padding:14px 5px;border-bottom:1px solid var(--sk-line);font-size:12px}
+#sunset-klip-organized .sk-trash-row[data-selected=true]{background:var(--sk-soft)}
+#sunset-klip-organized .sk-trash-name{overflow:hidden}
+#sunset-klip-organized .sk-trash-name>span,#sunset-klip-organized .sk-trash-name>small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sunset-klip-organized .sk-trash-name>span{font-size:13px}
+#sunset-klip-organized .sk-trash-name>small{color:var(--sk-muted);margin-top:4px}
+#sunset-klip-organized .sk-trash-watch{display:flex;align-items:center;gap:12px;width:100%;padding:0;text-align:left;background:transparent;color:inherit;cursor:pointer}
+#sunset-klip-organized .sk-trash-thumb{position:relative;width:72px;height:40px;flex-shrink:0;display:grid;place-items:center;border-radius:4px;background:var(--sk-panel);overflow:hidden;color:var(--sk-muted)}
+#sunset-klip-organized .sk-trash-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#sunset-klip-organized .sk-trash-play{position:absolute;inset:0;display:grid;place-items:center;background:#0003;color:var(--sk-text)}
+#sunset-klip-organized .sk-trash-play svg{width:22px;height:22px;filter:drop-shadow(0 1px 3px #000)}
+#sunset-klip-organized .sk-trash-watch:focus-visible{outline:none}
+#sunset-klip-organized .sk-trash-watch:focus-visible .sk-trash-thumb{outline:2px solid var(--sk-amber);outline-offset:2px}
+#sunset-klip-organized .sk-trash-watch:hover .sk-trash-play{color:var(--sk-amber)}
+#sunset-klip-organized .sk-dialog.sk-trash-preview{width:min(880px,calc(100% - 28px))}
+#sunset-klip-organized .sk-trash-preview .sk-media-top{margin-bottom:14px}
+#sunset-klip-organized #sk-trash-preview-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0}
+#sunset-klip-organized #sk-trash-preview-video{display:block;width:100%;aspect-ratio:16/9;max-height:calc(80vh - 170px);min-height:150px;object-fit:contain;background:#111014;border-radius:6px}
+#sunset-klip-organized #sk-trash-preview-status{margin:12px 0;overflow-wrap:anywhere}
+#sunset-klip-organized #sk-trash-preview-info{display:block;margin-top:9px;font-size:12px;color:var(--sk-muted)}
+#sunset-klip-organized .sk-trash-check{position:static;opacity:1}
+#sunset-klip-organized .sk-trash-status{margin:auto 0;padding:55px 16px;text-align:center;color:var(--sk-muted);font-size:13px;overflow-wrap:anywhere}
+#sunset-klip-organized .sk-check input:disabled+span{opacity:.55}
+@media(max-width:900px){#sunset-klip-organized .sk-trash-row{grid-template-columns:24px minmax(0,1fr) auto;gap:6px 10px}#sunset-klip-organized .sk-trash-size{grid-column:2;grid-row:2}#sunset-klip-organized .sk-trash-date{grid-column:2;grid-row:3}#sunset-klip-organized .sk-trash-restore{grid-column:3;grid-row:1/4}#sunset-klip-organized .sk-trash-page .sk-page-head{align-items:flex-start;flex-wrap:wrap}#sunset-klip-organized .sk-trash-page .sk-head-actions{flex-wrap:wrap}}
+#sunset-klip-organized .sk-dock{display:grid;grid-template-columns:minmax(0,1fr) 225px auto;align-items:center;gap:20px;padding:17px 30px;border-bottom:1px solid var(--sk-line);background:var(--sk-panel)}
+#sunset-klip-organized .sk-dock-fields{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+#sunset-klip-organized .sk-dock-fields select{width:124px;background:var(--sk-panel);font-size:13px}
+#sunset-klip-organized .sk-dock-fields .sk-mode{width:194px}
+#sunset-klip-organized .sk-dock-fields .sk-length{width:162px}
+#sunset-klip-organized .sk-custom-fps{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--sk-muted)}
+#sunset-klip-organized .sk-custom-fps input{width:74px;padding:9px}
+#sunset-klip-organized .sk-buffer{font-size:12px;color:var(--sk-muted);min-width:0}
+#sunset-klip-organized .sk-buffer-line{display:flex;align-items:center;gap:7px;white-space:nowrap;font-variant-numeric:tabular-nums}
+#sunset-klip-organized .sk-dot{height:8px;width:8px;flex-shrink:0;background:var(--sk-muted);border-radius:50%}
+#sunset-klip-organized .sk-dot[data-on=true]{background:var(--sk-amber)}
+#sunset-klip-organized .sk-meter{height:5px;background:var(--sk-line);border-radius:4px;margin-top:9px;overflow:hidden}
+#sunset-klip-organized .sk-meter-fill{height:100%;width:0;background:linear-gradient(90deg,var(--sk-amber),var(--sk-orange));border-radius:4px}
+#sunset-klip-organized .sk-dock-actions{display:flex;align-items:center;gap:13px}
+#sunset-klip-organized #sk-buffer-toggle{min-width:132px}
+#sunset-klip-organized #sk-save{min-width:139px;justify-content:space-between;font-size:14px}
+#sunset-klip-organized .sk-settings-layout{max-width:1040px;margin:0 auto}
+#sunset-klip-organized .sk-settings-intro{margin-bottom:24px}
+#sunset-klip-organized .sk-settings-intro p{font-size:13px;color:var(--sk-muted);margin-top:5px}
+#sunset-klip-organized .sk-settings-capture .sk-settings-grid{align-items:start;gap:24px 40px}
+#sunset-klip-organized .sk-folders{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0}
+#sunset-klip-organized .sk-folder{display:flex;align-items:center;gap:8px;background:transparent;color:var(--sk-muted);padding:8px 12px;border:1px solid var(--sk-line);border-radius:6px;font-size:12px}
+#sunset-klip-organized .sk-folder[aria-pressed=true]{color:var(--sk-amber);background:var(--sk-soft);border-color:var(--sk-amber)}
+#sunset-klip-organized .sk-folder small{color:var(--sk-muted);font-size:11px}
+#sunset-klip-organized .sk-empty{padding:55px 15px;text-align:center;color:var(--sk-muted);font-size:13px}
+#sunset-klip-organized .sk-media-actions{display:flex;align-items:center;gap:8px}
+#sunset-klip-organized .sk-export-preserve{display:flex;align-items:flex-start;gap:9px;padding:13px 0;color:var(--sk-muted);font-size:12px;border-bottom:1px solid var(--sk-line);margin-bottom:16px}
+#sunset-klip-organized .sk-export-preserve svg{color:var(--sk-amber)}
+#sunset-klip-organized .sk-export-path{font-size:12px;color:var(--sk-muted);overflow-wrap:anywhere;margin-top:8px}
+#sunset-klip-organized .sk-dialog.sk-explorer{width:min(690px,calc(100% - 28px))}
+#sunset-klip-organized .sk-explorer input{width:100%;font-size:12px}
+#sunset-klip-organized .sk-explorer-files{max-height:300px;overflow:auto;margin-top:15px;border-top:1px solid var(--sk-line);scrollbar-width:thin}
+#sunset-klip-organized .sk-file-row{display:flex;align-items:center;gap:10px;padding:11px 9px;border-bottom:1px solid var(--sk-line);background:transparent;color:var(--sk-text);width:100%;text-align:left;font-size:12px}
+#sunset-klip-organized .sk-file-row[data-selected=true]{background:var(--sk-soft);box-shadow:inset 3px 0 var(--sk-amber)}
+#sunset-klip-organized .sk-file-row svg{color:var(--sk-amber)}
+#sunset-klip-organized .sk-file-row span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sunset-klip-organized .sk-file-row small{margin:0;white-space:nowrap}
+#sunset-klip-organized .sk-export-summary small{margin-top:5px}
+#sunset-klip-organized .sk-settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:30px 44px}
+#sunset-klip-organized .sk-setting-section{border-top:1px solid var(--sk-line);padding-top:17px}
+#sunset-klip-organized .sk-setting-section h2{margin-bottom:15px}
+#sunset-klip-organized .sk-field{display:flex;flex-direction:column;gap:7px;margin-bottom:16px;font-size:13px}
+#sunset-klip-organized .sk-field>span{color:var(--sk-muted)}
+#sunset-klip-organized .sk-field select,#sunset-klip-organized .sk-field input{width:100%}
+#sunset-klip-organized .sk-field-pair{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+#sunset-klip-organized .sk-check{display:flex;align-items:flex-start;gap:11px;padding:10px 0;font-size:13px}
+#sunset-klip-organized .sk-check input{margin-top:2px}
+#sunset-klip-organized .sk-check small{display:block;color:var(--sk-muted);font-size:12px;margin-top:4px;line-height:1.5}
+#sunset-klip-organized .sk-mode-note{font-size:12px;color:var(--sk-muted);margin-top:-5px;margin-bottom:14px;min-height:36px}
+#sunset-klip-organized .sk-subtabs{display:flex;gap:5px;border-bottom:1px solid var(--sk-line);margin:20px 0 24px}
+#sunset-klip-organized .sk-subtabs button{background:transparent;color:var(--sk-muted);font-size:13px;padding:10px 14px;border-bottom:2px solid transparent}
+#sunset-klip-organized .sk-subtabs button[aria-selected=true]{border-color:var(--sk-amber);color:var(--sk-amber)}
+#sunset-klip-organized .sk-audio-row{display:flex;align-items:center;gap:13px;padding:15px 0;border-bottom:1px solid var(--sk-line);font-size:13px}
+#sunset-klip-organized .sk-audio-row svg{color:var(--sk-muted)}
+#sunset-klip-organized .sk-audio-name{flex:1}
+#sunset-klip-organized .sk-audio-row small{color:var(--sk-muted);font-size:12px}
+#sunset-klip-organized .sk-setting-note{font-size:12px;line-height:1.6;color:var(--sk-muted);margin-top:16px}
+#sunset-klip-organized .sk-hotkey{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-top:15px;font-size:13px}
+#sunset-klip-organized .sk-media-page{display:flex;flex-direction:column;gap:16px;overflow:hidden}
+#sunset-klip-organized .sk-editor-audio{flex-shrink:0;padding:12px 16px;background:var(--sk-panel);border:1px solid var(--sk-line);border-radius:7px}
+#sunset-klip-organized .sk-editor-audio-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+#sunset-klip-organized .sk-editor-audio h2{font-size:13px}
+#sunset-klip-organized #sk-editor-audio-tracks{display:flex;flex-wrap:wrap;gap:8px 16px;max-height:76px;overflow:auto;scrollbar-width:thin}
+#sunset-klip-organized .sk-editor-audio-track{display:flex;align-items:center;gap:8px;font-size:12px;min-width:130px;max-width:240px;padding:4px 0}
+#sunset-klip-organized .sk-editor-audio-track span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sunset-klip-organized .sk-editor-audio-track input[type=checkbox]{appearance:none;width:28px;height:16px;border-radius:10px;background:var(--sk-line);position:relative;cursor:pointer}
+#sunset-klip-organized .sk-editor-audio-track input[type=checkbox]:before{content:"";position:absolute;left:3px;top:3px;width:10px;height:10px;border-radius:50%;background:var(--sk-muted)}
+#sunset-klip-organized .sk-editor-audio-track input[type=checkbox]:checked{background:var(--sk-amber)}
+#sunset-klip-organized .sk-editor-audio-track input[type=checkbox]:checked:before{left:15px;background:var(--sk-ink)}
+#sunset-klip-organized #sk-editor-audio-status{font-size:11px;color:var(--sk-muted);margin-top:7px}
+#sunset-klip-organized #sk-editor-audio-retry{font-size:11px;min-height:26px;padding:4px 7px}
+#sunset-klip-organized .sk-media-top{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-shrink:0}
+#sunset-klip-organized .sk-media-title{display:flex;align-items:center;gap:12px}
+#sunset-klip-organized .sk-media-title h1{font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sunset-klip-organized .sk-player-mount{display:flex;flex:1;min-height:0}
+#sunset-klip-organized #sk-page-editor{overflow-y:auto;overflow-x:hidden}
+#sunset-klip-organized #sk-editor-mount{min-height:260px;flex-shrink:0}
+#sunset-klip-organized .sk-player{display:flex;flex-direction:column;gap:10px;min-height:0;width:100%}
+#sunset-klip-organized .sk-media-label{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;color:var(--sk-muted);flex-shrink:0}
+#sunset-klip-organized .sk-stage{flex:1;min-height:110px;background:#111014;border:1px solid var(--sk-line);border-radius:7px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+#sunset-klip-organized .sk-stage video{width:100%;height:100%;object-fit:contain;display:block}
+#sunset-klip-organized .sk-media-error{position:absolute;inset:0;background:var(--sk-panel);display:grid;place-items:center;padding:24px;text-align:center;color:var(--sk-muted);font-size:13px}
+#sunset-klip-organized .sk-playback{flex-shrink:0;padding:12px 14px;background:var(--sk-panel);border:1px solid var(--sk-line);border-radius:7px}
+#sunset-klip-organized .sk-seek-line{display:flex;align-items:center;gap:17px;margin-bottom:9px}
+#sunset-klip-organized #sk-seek{flex:1;width:100%}
+#sunset-klip-organized .sk-time{font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--sk-muted)}
+#sunset-klip-organized .sk-play-buttons{display:flex;align-items:center;gap:6px}
+#sunset-klip-organized .sk-volume{margin-left:auto;display:flex;align-items:center;gap:6px}
+#sunset-klip-organized #sk-volume{width:88px}
+#sunset-klip-organized .sk-trim{padding:14px 17px;background:var(--sk-panel);border:1px solid var(--sk-line);border-radius:7px;flex-shrink:0}
+#sunset-klip-organized .sk-trim-top,#sunset-klip-organized .sk-trim-labels,#sunset-klip-organized .sk-trim-tools{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#sunset-klip-organized .sk-trim-top{font-size:13px;margin-bottom:10px}
+#sunset-klip-organized #sk-trim-duration{color:var(--sk-amber)}
+#sunset-klip-organized .sk-trim-labels{font-size:11px;color:var(--sk-muted);font-variant-numeric:tabular-nums}
+#sunset-klip-organized .sk-trim-track{height:32px;position:relative;margin:3px 0}
+#sunset-klip-organized .sk-trim-rail{position:absolute;top:13px;left:0;right:0;height:6px;border-radius:3px;background:var(--sk-line);overflow:hidden}
+#sunset-klip-organized #sk-trim-selection{position:absolute;top:0;bottom:0;background:var(--sk-amber)}
+#sunset-klip-organized .sk-trim-track input{appearance:none;position:absolute;inset:0;width:100%;height:32px;margin:0;background:transparent;pointer-events:none}
+#sunset-klip-organized .sk-trim-track input::-webkit-slider-runnable-track{height:6px;background:transparent}
+#sunset-klip-organized .sk-trim-track input::-webkit-slider-thumb{appearance:none;width:9px;height:24px;border-radius:3px;margin-top:-9px;background:var(--sk-amber);border:1px solid var(--sk-ink);pointer-events:auto}
+#sunset-klip-organized .sk-trim-track input::-moz-range-track{height:6px;background:transparent}
+#sunset-klip-organized .sk-trim-track input::-moz-range-thumb{width:9px;height:24px;border-radius:3px;background:var(--sk-amber);pointer-events:auto}
+#sunset-klip-organized .sk-trim-tools{flex-wrap:wrap}
+#sunset-klip-organized .sk-trim-tools button{min-height:28px;font-size:11px;padding:5px 7px}
+#sunset-klip-organized .sk-trim-hint{font-size:11px;color:var(--sk-muted);margin-top:7px}
+#sunset-klip-organized .sk-dialog{width:min(440px,calc(100% - 28px));max-height:90%;padding:24px;margin:auto;border:1px solid var(--sk-line);border-radius:10px;background:var(--sk-panel);color:var(--sk-text);box-shadow:0 15px 60px #0006}
+#sunset-klip-organized .sk-dialog::backdrop{background:#08060bbd}
+#sunset-klip-organized .sk-dialog h2{font-size:19px;margin-bottom:7px}
+#sunset-klip-organized .sk-dialog p{font-size:13px;color:var(--sk-muted);margin-bottom:19px}
+#sunset-klip-organized .sk-dialog-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:21px}
+#sunset-klip-organized .sk-export-summary{padding:12px;background:var(--sk-raised);border-radius:6px;font-size:13px;margin-bottom:18px}
+#sunset-klip-organized .sk-export-audio{display:flex;gap:18px;flex-wrap:wrap}
+#sunset-klip-organized .sk-dialog small{font-size:11px;color:var(--sk-muted);display:block;margin-top:15px}
+#sunset-klip-organized .sk-menu{position:fixed;inset:auto;margin:0;padding:5px;border:1px solid var(--sk-line);border-radius:7px;background:var(--sk-raised);color:var(--sk-text);width:min(282px,calc(100vw - 16px));box-shadow:0 6px 25px #0005}
+#sunset-klip-organized .sk-menu button{display:flex;width:100%;align-items:center;gap:9px;padding:9px;border-radius:4px;background:transparent;text-align:left;font-size:13px}
+#sunset-klip-organized .sk-menu button:hover{background:var(--sk-soft);color:var(--sk-amber)}
+#sunset-klip-organized .sk-menu button:focus-visible{outline:1px solid var(--sk-amber);background:var(--sk-soft)}
+#sunset-klip-organized #sk-menu-delete{border-top:1px solid var(--sk-line);border-radius:0;margin-top:4px}
+#sunset-klip-organized .sk-toast{position:absolute;z-index:20;top:var(--sk-toast-top,160px);left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 28px);display:flex;align-items:center;gap:10px;background:var(--sk-raised);border:1px solid var(--sk-line);border-left:3px solid var(--sk-amber);border-radius:6px;padding:12px 15px;box-shadow:0 8px 35px #0004;font-size:12px}
+#sunset-klip-organized .sk-toast svg{color:var(--sk-amber)}
+@media(max-width:1600px){#sunset-klip-organized .sk-grid{grid-template-columns:repeat(7,minmax(0,1fr))}}
+@media(max-width:1280px){#sunset-klip-organized .sk-grid{grid-template-columns:repeat(6,minmax(0,1fr))}#sunset-klip-organized .sk-dock{grid-template-columns:minmax(0,1fr) auto;gap:12px}#sunset-klip-organized .sk-dock-fields{grid-column:1/-1}#sunset-klip-organized .sk-buffer{max-width:270px}}
+@media(max-width:1100px){#sunset-klip-organized .sk-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:20px 15px}#sunset-klip-organized .sk-topbar{gap:35px;padding:0 22px}#sunset-klip-organized .sk-page{padding:22px}#sunset-klip-organized .sk-dock{padding:13px 22px}#sunset-klip-organized .sk-dock-fields{gap:10px}#sunset-klip-organized .sk-dock-fields select{width:108px}#sunset-klip-organized .sk-dock-fields .sk-mode{width:177px}#sunset-klip-organized .sk-dock-fields .sk-length{width:152px}}
+@media(max-width:860px){#sunset-klip-organized .sk-grid{grid-template-columns:repeat(4,minmax(0,1fr))}#sunset-klip-organized .sk-chrome{display:none}#sunset-klip-organized .sk-nav{gap:2px}#sunset-klip-organized .sk-topbar{gap:24px}#sunset-klip-organized .sk-settings-grid{gap:25px}}
+@media(max-width:640px){#sunset-klip-organized{height:800px;grid-template-rows:52px auto minmax(0,1fr)}#sunset-klip-organized .sk-topbar{padding:0 12px;gap:12px}#sunset-klip-organized .sk-brand{font-size:20px;gap:5px}#sunset-klip-organized .sk-brand svg{display:none}#sunset-klip-organized .sk-nav{gap:0}#sunset-klip-organized .sk-nav button{font-size:12px;padding:0 8px}#sunset-klip-organized .sk-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px 12px}#sunset-klip-organized .sk-page{padding:17px 14px}#sunset-klip-organized h1{font-size:21px}#sunset-klip-organized .sk-dock{padding:12px 14px;gap:12px}#sunset-klip-organized .sk-dock-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}#sunset-klip-organized .sk-dock-fields select{width:100%!important;font-size:12px;min-height:34px;padding:7px}#sunset-klip-organized .sk-buffer{grid-column:1/-1;max-width:none}#sunset-klip-organized .sk-meter{margin-top:6px}#sunset-klip-organized .sk-dock-actions{grid-column:1/-1;justify-content:space-between;gap:10px}#sunset-klip-organized #sk-buffer-toggle,#sunset-klip-organized #sk-save{min-width:0;flex:1;font-size:12px;min-height:35px}#sunset-klip-organized .sk-settings-grid{grid-template-columns:1fr;gap:24px}#sunset-klip-organized .sk-settings-intro{margin-bottom:18px}#sunset-klip-organized .sk-head-actions{gap:8px}#sunset-klip-organized .sk-count{font-size:11px}#sunset-klip-organized .sk-library-foot span:last-child{display:none}#sunset-klip-organized .sk-media-top{gap:10px;flex-wrap:wrap}#sunset-klip-organized .sk-media-title h1{font-size:16px;max-width:180px}#sunset-klip-organized .sk-media-page{gap:11px}#sunset-klip-organized .sk-media-label{font-size:11px}#sunset-klip-organized .sk-playback{padding:9px}#sunset-klip-organized .sk-volume input{width:52px!important}#sunset-klip-organized .sk-seek-line{gap:9px}#sunset-klip-organized .sk-trim{padding:11px}#sunset-klip-organized .sk-stage{min-height:75px}#sunset-klip-organized .sk-button{font-size:12px;padding:7px 10px}}
+@media(max-width:480px){#sunset-klip-organized .sk-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#sunset-klip-organized .sk-head-actions .sk-count{display:none}#sunset-klip-organized .sk-media-title h1{max-width:130px}#sunset-klip-organized .sk-media-label>span{max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#sunset-klip-organized .sk-trim-tools{gap:3px}#sunset-klip-organized .sk-trim-tools button{padding:5px 3px}}
+@media(pointer:coarse){#sunset-klip-organized input[type=text],#sunset-klip-organized input[type=number],#sunset-klip-organized select{font-size:16px}#sunset-klip-organized .sk-view-toggle button,#sunset-klip-organized .sk-icon-button,#sunset-klip-organized .sk-more{min-width:40px;min-height:40px}}
+/* Compact desktop shell: one capture row and an icon navigation rail. */
+#sunset-klip-organized{--sk-rail-width:60px;grid-template-columns:60px minmax(0,1fr);grid-template-rows:40px 64px minmax(0,1fr)}
+#sunset-klip-organized .sk-topbar{grid-column:1/-1;grid-row:1;padding:0 20px;gap:0}
+#sunset-klip-organized .sk-brand{font-size:22px;gap:7px}
+#sunset-klip-organized .sk-sidebar{grid-column:1;grid-row:2/-1;background:var(--sk-panel);border-right:1px solid var(--sk-line);min-height:0}
+#sunset-klip-organized .sk-sidebar .sk-nav{height:100%;display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px 8px}
+#sunset-klip-organized .sk-sidebar .sk-nav button{position:relative;display:grid;place-items:center;flex:none;width:42px;height:42px;padding:0;border-radius:7px;background:transparent;color:var(--sk-muted)}
+#sunset-klip-organized .sk-sidebar .sk-nav button svg{width:20px;height:20px}
+#sunset-klip-organized .sk-sidebar .sk-nav button:hover{background:var(--sk-raised);color:var(--sk-text)}
+#sunset-klip-organized .sk-sidebar .sk-nav button[aria-selected=true]{background:var(--sk-soft);color:var(--sk-amber)}
+#sunset-klip-organized .sk-sidebar .sk-nav button[aria-selected=true]:after{inset:auto;left:-9px;top:50%;transform:translateY(-50%);width:3px;height:24px;background:var(--sk-amber);border-radius:0 3px 3px 0}
+#sunset-klip-organized .sk-sidebar #sk-tab-settings{margin-top:auto}
+#sunset-klip-organized .sk-main{grid-column:2;grid-row:3}
+#sunset-klip-organized .sk-toast{left:calc(50% + var(--sk-rail-width) / 2);max-width:calc(100% - var(--sk-rail-width) - 24px);pointer-events:none}
+#sunset-klip-organized .sk-dock{grid-column:2;grid-row:2;display:grid;grid-template-columns:minmax(0,1fr) 190px auto;gap:14px;align-items:center;height:64px;padding:12px 16px}
+#sunset-klip-organized .sk-dock-fields{grid-column:auto;display:flex;align-items:center;flex-wrap:nowrap;gap:8px}
+#sunset-klip-organized .sk-dock-fields select{flex:1 1 82px;width:0;min-width:76px;max-width:100px;height:38px;padding:8px 9px;font-size:13px}
+#sunset-klip-organized .sk-dock-fields .sk-mode{flex:1.3 1 130px;width:0;min-width:120px;max-width:180px}
+#sunset-klip-organized .sk-dock-fields .sk-length{flex:1.2 1 125px;width:0;min-width:116px;max-width:164px}
+#sunset-klip-organized .sk-dock-fields .sk-custom-fps{flex:none;font-size:12px;gap:5px}
+#sunset-klip-organized .sk-dock-fields .sk-custom-fps input{width:56px;padding:8px 5px;height:38px}
+#sunset-klip-organized .sk-buffer{grid-column:auto;width:190px;max-width:none;font-size:11px}
+#sunset-klip-organized .sk-buffer-line{gap:5px}
+#sunset-klip-organized .sk-meter{margin-top:6px;height:4px}
+#sunset-klip-organized .sk-dock-actions{grid-column:auto;display:flex;align-items:center;justify-content:flex-end;gap:8px}
+#sunset-klip-organized #sk-buffer-toggle{flex:none;min-width:0;padding:8px 10px;font-size:12px;height:38px}
+#sunset-klip-organized #sk-save{flex:none;min-width:110px;max-width:160px;height:38px;padding:8px 11px;font-size:13px}
+@media(max-width:1200px){
+  #sunset-klip-organized .sk-dock{grid-template-columns:minmax(0,1fr) 104px auto;gap:12px;padding:12px 14px}
+  #sunset-klip-organized .sk-buffer{width:104px}
+  #sunset-klip-organized #sk-buffer-status{display:none}
+  #sunset-klip-organized .sk-dock-fields select{font-size:12px}
+}
+@media(max-width:950px){
+  #sunset-klip-organized .sk-dock{grid-template-columns:minmax(0,1fr) 12px auto;gap:10px}
+  #sunset-klip-organized .sk-buffer{width:12px}
+  #sunset-klip-organized #sk-buffer-time,#sunset-klip-organized .sk-buffer .sk-meter{display:none}
+}
+@media(max-width:850px){
+  #sunset-klip-organized .sk-dock-fields>select[data-setting=resolution],#sunset-klip-organized .sk-dock-fields>select[data-setting=fps]{display:none}
+  #sunset-klip-organized .sk-dock{gap:8px;padding:12px 10px}
+  #sunset-klip-organized #sk-save{min-width:100px}
+}
+@media(max-width:640px){
+  #sunset-klip-organized{--sk-rail-width:52px;grid-template-columns:52px minmax(0,1fr);grid-template-rows:40px 64px minmax(0,1fr)}
+  #sunset-klip-organized .sk-sidebar .sk-nav{padding:12px 5px;gap:8px}
+  #sunset-klip-organized .sk-sidebar .sk-nav button{width:40px;height:42px}
+  #sunset-klip-organized .sk-sidebar .sk-nav button[aria-selected=true]:after{left:-6px}
+  #sunset-klip-organized .sk-dock-fields select{width:0!important;padding:8px;font-size:12px}
+  #sunset-klip-organized .sk-dock-fields .sk-mode{min-width:110px;max-width:160px}
+  #sunset-klip-organized .sk-dock-fields .sk-length{min-width:104px;max-width:144px}
+  #sunset-klip-organized #sk-buffer-toggle{padding:8px}
+}
+@media(max-width:560px){
+  #sunset-klip-organized .sk-dock-fields>.sk-length,#sunset-klip-organized .sk-dock-fields .sk-custom-fps{display:none!important}
+}
+@media(max-width:480px){
+  #sunset-klip-organized{--sk-rail-width:48px;grid-template-columns:48px minmax(0,1fr)}
+  #sunset-klip-organized .sk-sidebar .sk-nav{padding:12px 3px}
+  #sunset-klip-organized .sk-sidebar .sk-nav button[aria-selected=true]:after{left:-4px}
+  #sunset-klip-organized .sk-dock{gap:6px;padding:12px 6px}
+  #sunset-klip-organized .sk-dock-actions{gap:6px}
+  #sunset-klip-organized #sk-buffer-toggle{width:32px;height:36px;min-height:36px;padding:0}
+  #sunset-klip-organized .sk-toggle-text,#sunset-klip-organized #sk-save-key{display:none}
+  #sunset-klip-organized #sk-save{min-width:74px;max-width:85px;padding:8px 9px;justify-content:center;font-size:12px}
+  #sunset-klip-organized .sk-dock-fields .sk-mode{min-width:108px;max-width:150px}
+  #sunset-klip-organized .sk-topbar{padding:0 14px}
+}
+@media(max-width:900px){
+  #sunset-klip-organized .sk-table,#sunset-klip-organized .sk-table tbody{display:block;width:100%}
+  #sunset-klip-organized .sk-table thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  #sunset-klip-organized .sk-table tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;position:relative;padding:12px 8px;border-bottom:1px solid var(--sk-line)}
+  #sunset-klip-organized .sk-table td{display:block;padding:0;border:0;font-size:12px}
+  #sunset-klip-organized .sk-table td:first-child{grid-column:1/-1;padding-right:42px;margin-bottom:4px}
+  #sunset-klip-organized .sk-table td:nth-child(2){grid-column:1;grid-row:2}
+  #sunset-klip-organized .sk-table td:nth-child(3){grid-column:2;grid-row:2;text-align:right}
+  #sunset-klip-organized .sk-table td:nth-child(4){grid-column:1;grid-row:3}
+  #sunset-klip-organized .sk-table td:nth-child(5){grid-column:2;grid-row:3;text-align:right}
+  #sunset-klip-organized .sk-table td:last-child{position:absolute;top:15px;right:7px;padding:0}
+  #sunset-klip-organized .sk-table .sk-row-actions>.sk-icon-button:first-child{display:none}
+  #sunset-klip-organized .sk-table .sk-row-open{gap:12px}
+  #sunset-klip-organized .sk-table .sk-row-thumb,#sunset-klip-organized .sk-table .sk-row-open img{width:72px;height:40px}
+  #sunset-klip-organized .sk-table tr[data-selected=true]{box-shadow:inset 3px 0 var(--sk-amber)}
+  #sunset-klip-organized .sk-table tr[data-selected=true] td:first-child{box-shadow:none}
+}
+/* Editor: preview, inspector, and a real frame timeline within the native window. */
+#sunset-klip-organized .sk-topbar{padding-right:0}
+#sunset-klip-organized .sk-chrome{gap:0}
+#sunset-klip-organized .sk-chrome button{width:44px;height:40px;border-radius:0}
+#sunset-klip-organized .sk-chrome svg{width:14px;height:14px;stroke-width:1.6}
+#sunset-klip-organized button:focus-visible,#sunset-klip-organized select:focus-visible,#sunset-klip-organized input:focus-visible{outline:none;box-shadow:inset 0 0 0 1px var(--sk-amber)}
+#sunset-klip-organized .sk-sidebar .sk-nav button:focus-visible{outline:none;box-shadow:none;background:var(--sk-raised);color:var(--sk-amber)}
+#sunset-klip-organized #sk-page-editor{display:grid;grid-template-rows:auto minmax(250px,1fr) 174px;gap:14px;padding:18px 20px;overflow-y:auto;overflow-x:hidden}
+#sunset-klip-organized .sk-editor-workspace{display:grid;grid-template-columns:minmax(0,1fr) 264px;gap:16px;min-height:250px}
+#sunset-klip-organized #sk-editor-mount{min-height:250px;height:100%;overflow:hidden}
+#sunset-klip-organized .sk-editor-preview .sk-player{gap:8px}
+#sunset-klip-organized .sk-editor-preview .sk-media-label{min-height:26px;font-size:11px}
+#sunset-klip-organized .sk-editor-preview .sk-media-label>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sunset-klip-organized .sk-editor-preview #sk-open-video{padding:4px 8px;min-height:26px;font-size:11px}
+#sunset-klip-organized .sk-editor-preview .sk-stage{min-height:140px;border-radius:8px}
+#sunset-klip-organized .sk-editor-preview .sk-seek-line{display:none}
+#sunset-klip-organized .sk-editor-preview .sk-playback{padding:8px 10px;border:0;background:transparent}
+#sunset-klip-organized .sk-editor-workspace .sk-editor-audio{height:100%;min-height:0;overflow-y:auto;overflow-x:hidden;padding:14px;border-radius:8px;scrollbar-width:thin}
+#sunset-klip-organized .sk-inspector-subtitle{font-size:11px;color:var(--sk-muted);margin-bottom:6px}
+#sunset-klip-organized #sk-editor-audio-tracks{display:flex;flex-direction:column;flex-wrap:nowrap;max-height:none;overflow:visible;gap:0}
+#sunset-klip-organized .sk-editor-audio-track{display:block;min-width:0;max-width:none;padding:12px 0;border-bottom:1px solid var(--sk-line)}
+#sunset-klip-organized .sk-editor-audio-toggle{display:flex;align-items:center;gap:8px}
+#sunset-klip-organized .sk-editor-audio-toggle input{order:2;margin-left:auto}
+#sunset-klip-organized .sk-editor-audio-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sunset-klip-organized .sk-editor-gain-row{display:flex;align-items:center;gap:10px;margin-top:12px}
+#sunset-klip-organized .sk-editor-gain-row input[type=range]{width:0;flex:1}
+#sunset-klip-organized .sk-editor-gain-row output{width:42px;text-align:right;font-size:11px;color:var(--sk-muted);font-variant-numeric:tabular-nums}
+#sunset-klip-organized .sk-editor-timeline{min-height:174px;padding:12px 16px}
+#sunset-klip-organized .sk-editor-timeline h2{font-size:13px}
+#sunset-klip-organized .sk-editor-timeline .sk-trim-top{font-size:11px;margin-bottom:5px}
+#sunset-klip-organized .sk-timeline-position{font-variant-numeric:tabular-nums;color:var(--sk-muted)}
+#sunset-klip-organized #sk-timeline-ruler{height:23px;position:relative;font-size:10px;color:var(--sk-muted);margin-bottom:4px}
+#sunset-klip-organized .sk-timeline-tick{position:absolute;top:0;bottom:0;transform:translateX(-50%);white-space:nowrap}
+#sunset-klip-organized .sk-timeline-tick:after{content:"";position:absolute;bottom:0;left:50%;width:1px;height:5px;background:var(--sk-line)}
+#sunset-klip-organized .sk-timeline-tick:first-child{transform:none}
+#sunset-klip-organized .sk-timeline-tick:last-child{transform:translateX(-100%)}
+#sunset-klip-organized .sk-timeline-filmstrip{height:62px;position:relative;background:var(--sk-raised);border:1px solid var(--sk-line);border-radius:4px;cursor:crosshair;touch-action:none}
+#sunset-klip-organized #sk-timeline-frames{display:flex;width:100%;height:100%;overflow:hidden;border-radius:3px}
+#sunset-klip-organized #sk-timeline-frames img{flex:1;width:0;height:100%;object-fit:cover;pointer-events:none;user-select:none}
+#sunset-klip-organized #sk-timeline-status{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;color:var(--sk-muted);pointer-events:none}
+#sunset-klip-organized .sk-timeline-dim{position:absolute;top:0;bottom:0;background:#111014b8;pointer-events:none}
+#sunset-klip-organized #sk-timeline-dim-left{left:0}
+#sunset-klip-organized #sk-timeline-dim-right{right:0}
+#sunset-klip-organized .sk-timeline-selection{position:absolute;top:-1px;bottom:-1px;border:2px solid var(--sk-amber);border-radius:4px;background:transparent!important;pointer-events:none}
+#sunset-klip-organized .sk-timeline-handle{position:absolute;top:-1px;bottom:-1px;width:10px;padding:0;background:var(--sk-amber);border-radius:3px;cursor:ew-resize;transform:translateX(-50%);touch-action:none;z-index:2}
+#sunset-klip-organized .sk-timeline-handle:after{content:"";position:absolute;left:4px;top:22px;height:18px;width:2px;background:var(--sk-ink);border-radius:2px}
+#sunset-klip-organized #sk-timeline-playhead{position:absolute;top:-23px;bottom:-4px;width:2px;background:var(--sk-orange);pointer-events:none;z-index:3}
+#sunset-klip-organized #sk-timeline-playhead:before{content:"";position:absolute;top:0;left:-3px;border-left:4px solid transparent;border-right:4px solid transparent;border-top:6px solid var(--sk-orange)}
+#sunset-klip-organized .sk-timeline-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
+#sunset-klip-organized .sk-timeline-footer .sk-trim-labels{gap:18px;font-size:10px}
+#sunset-klip-organized .sk-timeline-footer .sk-trim-tools{gap:4px}
+#sunset-klip-organized .sk-timeline-footer .sk-trim-tools button{font-size:10px;min-height:24px;padding:4px}
+@media(max-width:1000px){#sunset-klip-organized #sk-page-editor{padding:16px;gap:12px}#sunset-klip-organized .sk-editor-workspace{grid-template-columns:minmax(0,1fr) 230px;gap:12px}#sunset-klip-organized .sk-editor-workspace .sk-editor-audio{padding:12px}#sunset-klip-organized .sk-editor-preview .sk-volume input{width:64px}#sunset-klip-organized .sk-editor-preview .sk-button{font-size:11px;padding:7px 8px}#sunset-klip-organized .sk-editor-timeline{padding:12px}}
+</style>
+<div id="sunset-klip-organized" aria-label="Klip sunset masaüstü prototipi">
+  <header class="sk-topbar">
+    <div class="sk-brand"><i data-lucide="play" aria-hidden="true"></i><span>klip</span></div>
+
+    <div class="sk-title-actions"><button type="button" class="sk-icon-button" id="sk-update-badge" aria-label="Klip güncellemesi" title="Klip güncellemesi" hidden><i data-lucide="download" aria-hidden="true"></i><span class="sk-update-dot" aria-hidden="true"></span></button><div class="sk-chrome" aria-hidden="true"><i data-lucide="minus"></i><i data-lucide="square"></i><i data-lucide="x"></i></div></div>
+  </header>
+  <aside class="sk-sidebar" aria-label="Sol gezinme çubuğu">
+    <nav class="sk-nav" role="tablist" aria-label="Ana gezinme" aria-orientation="vertical">
+      <button type="button" id="sk-tab-clips" role="tab" data-page="clips" aria-controls="sk-page-clips" aria-selected="true" aria-label="Klipler" data-tooltip="Klipler" data-tooltip-placement="right"><i data-lucide="clapperboard" aria-hidden="true"></i></button>
+      <button type="button" id="sk-tab-editor" role="tab" data-page="editor" aria-controls="sk-page-editor" aria-selected="false" aria-label="Düzenleyici" data-tooltip="Düzenleyici" data-tooltip-placement="right"><i data-lucide="scissors" aria-hidden="true"></i></button>
+      <button type="button" id="sk-tab-trash" role="tab" data-page="trash" aria-controls="sk-page-trash" aria-selected="false" aria-label="Çöp Kutusu" data-tooltip="Çöp Kutusu" data-tooltip-placement="right"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+      <button type="button" id="sk-tab-settings" role="tab" data-page="settings" aria-controls="sk-page-settings" aria-selected="false" aria-label="Ayarlar" data-tooltip="Ayarlar" data-tooltip-placement="right"><i data-lucide="settings-2" aria-hidden="true"></i></button>
+    </nav>
+  </aside>
+  <section class="sk-dock" aria-label="Kayıt ve klip kontrolleri"><div class="sk-dock-fields"><select class="sk-mode" data-setting="mode" aria-label="Hızlı kayıt modu"><option value="screen">Yalnız ekran</option><option value="game">Yalnız oyun</option><option value="auto">Ekran + oyun</option></select><select class="sk-length" data-setting="duration" aria-label="Klip süresi"><option value="30">Son 30 saniye</option><option value="60">Son 1 dakika</option><option value="90">Son 90 saniye</option><option value="120">Son 2 dakika</option><option value="180">Son 3 dakika</option><option value="240">Son 4 dakika</option><option value="300">Son 5 dakika</option></select><select data-setting="resolution" aria-label="Çözünürlük"><option value="1920x1080">1080p</option><option value="2560x1440">1440p</option><option value="1280x720">720p</option></select><select data-setting="fps" aria-label="Kayıt FPS"><option value="24">24 FPS</option><option value="30">30 FPS</option><option value="60">60 FPS</option><option value="120">120 FPS</option><option value="144">144 FPS</option><option value="240">240 FPS</option><option value="custom">Özel FPS</option></select><label class="sk-custom-fps" data-custom-fps hidden><input type="number" data-setting="customFps" min="1" max="360" step="1" aria-label="Özel FPS">FPS</label></div><div class="sk-buffer"><div class="sk-buffer-line"><span class="sk-dot" id="sk-buffer-dot" data-on="false"></span><span id="sk-buffer-status">Tampon kapalı</span><span id="sk-buffer-time">00:00 / 02:00</span></div><div class="sk-meter" role="progressbar" aria-label="Replay buffer doluluğu" aria-valuemin="0" aria-valuemax="120" aria-valuenow="0" id="sk-buffer-meter"><div class="sk-meter-fill" id="sk-buffer-fill"></div></div></div><div class="sk-dock-actions"><button type="button" class="sk-button sk-ghost" id="sk-buffer-toggle"><i data-lucide="play" aria-hidden="true"></i><span>Tamponu başlat</span></button><button type="button" class="sk-button sk-primary" id="sk-save" disabled><span id="sk-save-label">Klip al</span><kbd id="sk-save-key">F8</kbd></button></div></section>
+  <main class="sk-main">
+    <section class="sk-page sk-library" id="sk-page-clips" role="tabpanel" aria-labelledby="sk-tab-clips">
+      <div class="sk-page-head"><h1>Kliplerim</h1><div class="sk-head-actions"><div class="sk-selection-actions" id="sk-selection-actions" hidden><span id="sk-selection-count" aria-live="polite"></span><button type="button" class="sk-button" id="sk-delete-selected" title="Geri Dönüşüm Kutusu’na taşı"><i data-lucide="trash-2" aria-hidden="true"></i><span id="sk-delete-label">Sil</span></button><button type="button" class="sk-icon-button" id="sk-clear-selection" aria-label="Seçimi temizle" title="Seçimi temizle · Escape"><i data-lucide="x" aria-hidden="true"></i></button></div><span class="sk-count" id="sk-clip-count">24 klip</span><div class="sk-view-toggle" role="group" aria-label="Klip görünümü"><button type="button" id="sk-view-grid" aria-label="Kart görünümü" data-tooltip="Kart görünümü" aria-pressed="true"><i data-lucide="layout-grid" aria-hidden="true"></i></button><button type="button" id="sk-view-list" aria-label="Liste görünümü" data-tooltip="Liste görünümü" aria-pressed="false"><i data-lucide="list" aria-hidden="true"></i></button></div></div></div>
+      <div class="sk-folders" id="sk-game-folders" role="group" aria-label="Oyun klasörleri"></div>
+      <div class="sk-library-body" id="sk-library-body"></div>
+      <div class="sk-library-foot"><span id="sk-folder-label">Videolar\Klip</span><span>Yerel kayıt · NVIDIA NVENC</span></div>
+    </section>
+    <section class="sk-page sk-trash-page" id="sk-page-trash" role="tabpanel" aria-labelledby="sk-tab-trash" hidden>
+      <div class="sk-page-head"><h1>Çöp Kutusu</h1><div class="sk-head-actions"><div class="sk-selection-actions" id="sk-trash-selection-actions" hidden><span class="sk-count" id="sk-trash-selection-count" aria-live="polite"></span><button type="button" class="sk-button sk-primary" id="sk-trash-restore-selected"><i data-lucide="rotate-ccw" aria-hidden="true"></i><span id="sk-trash-restore-label">Geri yükle</span></button><button type="button" class="sk-icon-button" id="sk-trash-clear-selection" aria-label="Çöp Kutusu seçimini temizle" title="Seçimi temizle"><i data-lucide="x" aria-hidden="true"></i></button></div><span class="sk-count" id="sk-trash-count">0 klip</span><button type="button" class="sk-button sk-ghost" id="sk-trash-refresh" aria-label="Çöp Kutusu’nu yenile" title="Yenile"><i data-lucide="refresh-cw" aria-hidden="true"></i></button><button type="button" class="sk-button" id="sk-trash-open"><i data-lucide="external-link" aria-hidden="true"></i>Windows’ta aç</button></div></div>
+      <p class="sk-trash-hint">Yalnızca Klip kayıt klasöründeki silinmiş klipler gösterilir. İlk konumlarına geri yüklenir; aynı adlı dosyaların üzerine yazılmaz.</p>
+      <p class="sk-trash-status" id="sk-trash-status" role="status" aria-live="polite" hidden></p><div class="sk-trash-list" id="sk-trash-list" aria-label="Silinmiş klipler"></div>
+      <div class="sk-library-foot"><span>Windows Geri Dönüşüm Kutusu</span><span>Geri yüklemek için kliplerin kutucuklarını seç.</span></div>
+      <dialog class="sk-dialog sk-trash-preview" id="sk-trash-preview-dialog" aria-labelledby="sk-trash-preview-title"><div class="sk-media-top"><h2 id="sk-trash-preview-title">Silinmiş klip</h2><button type="button" class="sk-icon-button" id="sk-trash-preview-close" aria-label="Önizlemeyi kapat"><i data-lucide="x" aria-hidden="true"></i></button></div><video id="sk-trash-preview-video" controls playsinline preload="none" aria-label="Çöp Kutusu klip oynatıcı" hidden></video><p id="sk-trash-preview-status" role="status" aria-live="polite"></p><small id="sk-trash-preview-info"></small><div class="sk-dialog-actions"><button type="button" class="sk-button sk-primary" id="sk-trash-preview-restore"><i data-lucide="rotate-ccw" aria-hidden="true"></i>Geri yükle</button></div></dialog>
+    </section>
+    <section class="sk-page sk-media-page" id="sk-page-viewer" role="tabpanel" aria-labelledby="sk-viewer-title" hidden>
+      <div class="sk-media-top"><div class="sk-media-title"><button type="button" class="sk-button sk-ghost" id="sk-viewer-back" aria-label="Kliplerime dön"><i data-lucide="arrow-left" aria-hidden="true"></i></button><h1 id="sk-viewer-title">Klip önizlemesi</h1></div><div class="sk-media-actions"><button type="button" class="sk-button sk-ghost" id="sk-viewer-explorer" aria-label="Klibi Dosya Gezgini’nde göster" data-tooltip="Dosya Gezgini’nde göster"><i data-lucide="folder-open" aria-hidden="true"></i></button><button type="button" class="sk-button sk-primary" id="sk-edit-clip"><i data-lucide="scissors" aria-hidden="true"></i>Düzenleyicide aç</button></div></div>
+      <div class="sk-player-mount" id="sk-viewer-mount"><div class="sk-player" id="sk-player"><div class="sk-media-label"><span id="sk-media-label">Video önizlemesi</span><button type="button" class="sk-button sk-ghost" id="sk-open-video"><i data-lucide="folder-open" aria-hidden="true"></i>Video aç</button><input type="file" id="sk-video-file" accept="video/*" hidden></div><div class="sk-stage"><video id="sk-video" preload="metadata" playsinline aria-label="Klip oynatıcı"></video><div class="sk-media-error" id="sk-media-error" hidden>Bu video açılamadı. Başka bir video seçebilirsin.</div></div><div class="sk-playback"><div class="sk-seek-line"><input type="range" id="sk-seek" min="0" max="15" step="0.01" value="0" aria-label="Videoda ileri geri git"><span class="sk-time" id="sk-play-time">00:00 / 00:15</span></div><div class="sk-play-buttons"><button type="button" class="sk-button sk-ghost" id="sk-back-five" aria-label="5 saniye geri"><i data-lucide="rotate-ccw" aria-hidden="true"></i>5 sn</button><button type="button" class="sk-button sk-primary" id="sk-play" aria-label="Oynat"><i data-lucide="play" aria-hidden="true"></i></button><button type="button" class="sk-button sk-ghost" id="sk-forward-five" aria-label="5 saniye ileri">5 sn<i data-lucide="rotate-cw" aria-hidden="true"></i></button><div class="sk-volume"><button type="button" class="sk-icon-button" id="sk-mute" aria-label="Sesi kapat"><i data-lucide="volume-2" aria-hidden="true"></i></button><input type="range" id="sk-volume" min="0" max="1" step=".05" value=".7" aria-label="Oynatıcı ses düzeyi"></div></div></div></div></div>
+    </section>
+    <section class="sk-page sk-media-page" id="sk-page-editor" role="tabpanel" aria-labelledby="sk-tab-editor" hidden>
+      <div class="sk-media-top"><div class="sk-media-title"><h1>Düzenleyici</h1><span class="sk-count" id="sk-editor-name"></span></div><button type="button" class="sk-button sk-primary" id="sk-export"><i data-lucide="share-2" aria-hidden="true"></i>Klibi dışa aktar</button></div>
+      <div class="sk-editor-workspace"><div class="sk-player-mount sk-editor-preview" id="sk-editor-mount"></div><aside class="sk-editor-audio" aria-labelledby="sk-editor-audio-title"><div class="sk-editor-audio-head"><h2 id="sk-editor-audio-title">Ses İzleri</h2><button type="button" class="sk-button sk-ghost" id="sk-editor-audio-retry" hidden>Yeniden Dene</button></div><p class="sk-inspector-subtitle">Önizleme Ve Çıktı</p><div id="sk-editor-audio-tracks"></div><p id="sk-editor-audio-status" role="status" aria-live="polite"></p></aside></div>
+      <section class="sk-trim sk-editor-timeline" aria-label="Klip Kesim Aralığı"><div class="sk-trim-top"><h2>Zaman Çizelgesi</h2><span class="sk-timeline-position" id="sk-timeline-position">00:00 / 00:15</span><span class="sk-muted">Seçili Süre · <output id="sk-trim-duration">15,0 sn</output></span></div><div id="sk-timeline-ruler" aria-hidden="true"></div><div id="sk-timeline-track" class="sk-timeline-filmstrip" role="group" aria-label="Video Zaman Çizelgesi"><div id="sk-timeline-frames"></div><div id="sk-timeline-status" role="status" aria-live="polite"></div><div id="sk-timeline-dim-left" class="sk-timeline-dim"></div><div id="sk-timeline-dim-right" class="sk-timeline-dim"></div><div id="sk-trim-selection" class="sk-timeline-selection"></div><button type="button" id="sk-timeline-in" class="sk-timeline-handle" role="slider" aria-label="Kesim Başlangıcı" aria-valuemin="0" aria-valuemax="15" aria-valuenow="0"></button><button type="button" id="sk-timeline-out" class="sk-timeline-handle" role="slider" aria-label="Kesim Bitişi" aria-valuemin="0" aria-valuemax="15" aria-valuenow="15"></button><div id="sk-timeline-playhead" aria-hidden="true"></div></div><input type="range" id="sk-trim-start" min="0" max="15" step=".1" value="0" aria-label="Kesim Başlangıcı" hidden><input type="range" id="sk-trim-end" min="0" max="15" step=".1" value="15" aria-label="Kesim Bitişi" hidden><div class="sk-timeline-footer"><div class="sk-trim-labels"><span>Başlangıç <output id="sk-trim-start-time">00:00.0</output></span><span>Bitiş <output id="sk-trim-end-time">00:15.0</output></span></div><div class="sk-trim-tools"><button type="button" class="sk-button sk-ghost" id="sk-mark-in">I · Başlangıcı Buraya Al</button><button type="button" class="sk-button sk-ghost" id="sk-mark-out">O · Bitişi Buraya Al</button></div></div></section>
+    </section>
+    <section class="sk-page" id="sk-page-settings" role="tabpanel" aria-labelledby="sk-tab-settings" hidden>
+      <div class="sk-settings-layout"><h1>Ayarlar</h1><div class="sk-subtabs" role="tablist" aria-label="Ayar kategorisi"><button type="button" id="sk-settings-capture-tab" role="tab" data-settings-tab="capture" aria-controls="sk-settings-capture" aria-selected="true">Kayıt</button><button type="button" id="sk-settings-audio-tab" role="tab" data-settings-tab="audio" aria-controls="sk-settings-audio" aria-selected="false">Ses izleri</button><button type="button" id="sk-settings-general-tab" role="tab" data-settings-tab="general" aria-controls="sk-settings-general" aria-selected="false">Genel</button><button type="button" id="sk-settings-updates-tab" role="tab" data-settings-tab="updates" aria-controls="sk-settings-updates" aria-selected="false">Güncellemeler</button></div>
+    <section class="sk-settings-capture" id="sk-settings-capture" role="tabpanel" aria-labelledby="sk-settings-capture-tab" hidden>
+      <div class="sk-settings-layout">
+        <div class="sk-settings-grid">
+          <section class="sk-setting-section"><h2>Kaynak ve tampon</h2><label class="sk-field"><span>Oyun dosyası adı (boşsa otomatik)</span><input type="text" data-setting="targetExe" aria-label="Hedef oyun" placeholder="ornek-oyun.exe"></label><label class="sk-field"><span>Kayıt modu</span><select data-setting="mode" aria-label="Kayıt ayarları modu"><option value="screen">Yalnız ekran</option><option value="game">Yalnız oyun</option><option value="auto">Ekran + oyun</option></select></label><p class="sk-mode-note" id="sk-mode-note"></p><label class="sk-field"><span>Replay buffer süresi</span><select data-setting="duration" aria-label="Replay buffer süresi"><option value="30">30 saniye</option><option value="60">1 dakika</option><option value="90">1 dakika 30 saniye</option><option value="120">2 dakika</option><option value="180">3 dakika</option><option value="240">4 dakika</option><option value="300">5 dakika</option></select></label><label class="sk-field"><span>Geçici tampon</span><select data-setting="storage"><option value="ram">Bellek tamponu</option></select></label></section>
+          <section class="sk-setting-section"><h2>Görüntü kalitesi</h2><div class="sk-field-pair"><label class="sk-field"><span>Çözünürlük</span><select data-setting="resolution"><option value="1920x1080">1920 × 1080</option><option value="2560x1440">2560 × 1440</option><option value="1280x720">1280 × 720</option></select></label><label class="sk-field"><span>FPS</span><select data-setting="fps"><option value="24">24 FPS</option><option value="30">30 FPS</option><option value="60">60 FPS</option><option value="120">120 FPS</option><option value="144">144 FPS</option><option value="240">240 FPS</option><option value="custom">Özel FPS</option></select></label></div><label class="sk-field" data-custom-fps hidden><span>Özel FPS sayısı</span><input type="number" min="1" max="360" step="1" data-setting="customFps" aria-label="Kayıt ayarları özel FPS"></label><label class="sk-field"><span>Video kodlayıcı</span><select data-setting="codec"><option value="h264">H.264 · Yaygın uyumluluk</option></select></label><label class="sk-check"><input type="checkbox" data-setting="stretch"><span>4:3 görüntüyü ekrana esnet<small>Seçili çıkış çözünürlüğünü doldurur; siyah kenar bırakmaz.</small></span></label></section>
+          <section class="sk-setting-section"><h2>Geçiş ve görünüm</h2><label class="sk-check"><input type="checkbox" data-setting="cursor"><span>İmleci göster</span></label><p class="sk-setting-note">Yalnız oyun modunda Alt+Tab masaüstüne geçmez. Ekran + oyun modunda geçişler aynı klip içinde gösterilir.</p></section>
+          <section class="sk-setting-section"><h2>Kısayol ve bildirim</h2><div class="sk-hotkey"><span>Klibi kaydet</span><button type="button" class="sk-button" id="sk-hotkey">F8</button></div><p class="sk-setting-note" id="sk-hotkey-note">Değiştirmek için tuşa tıkla ve yeni kısayolunu bas.</p><label class="sk-check"><input type="checkbox" data-setting="sound"><span>Klip alındığında ses çal</span></label><button type="button" class="sk-button sk-ghost" id="sk-test-sound"><i data-lucide="volume-2" aria-hidden="true"></i>Sesi dene</button></section>
+        </div>
+      </div>
+    </section>
+        <div id="sk-settings-general" role="tabpanel" aria-labelledby="sk-settings-general-tab"><div class="sk-settings-grid"><section class="sk-setting-section"><h2>Başlangıç</h2><label class="sk-field"><span>Dil</span><select data-setting="language" aria-label="Dil"><option value="tr">Türkçe</option><option value="en">English</option></select></label><label class="sk-check"><input type="checkbox" data-setting="launch" id="sk-launch"><span>Windows ile başlat<small>Bilgisayar açıldığında uygulamayı aç.</small></span></label><label class="sk-check"><input type="checkbox" data-setting="launchMinimized" id="sk-launch-minimized" disabled><span>Windows açılışında sistem tepsisinde başlat<small>Yalnızca Windows ile başlatılırken geçerlidir. Elle açtığında pencere normal açılır.</small></span></label><label class="sk-check"><input type="checkbox" data-setting="autoBuffer" id="sk-auto-buffer"><span>Replay buffer’ı otomatik başlat<small>Uygulama açıldığında tamponu etkinleştir.</small></span></label><p class="sk-setting-note">İlk kurulumda başlangıç seçenekleri kapalıdır.</p></section><section class="sk-setting-section"><h2>Kayıt konumu</h2><label class="sk-field"><span>Klip klasörü</span><input type="text" data-setting="folder" aria-label="Klip klasörü" value="Videolar\Klip"></label><label class="sk-check"><input type="checkbox" data-setting="sound"><span>Klip kaydedildiğinde bildirim sesi</span></label><p class="sk-setting-note">Oyunlara göre klasörlenir: Valorant, Counter-Strike 2, Quake Live…</p></section></div></div>
+        <div id="sk-settings-updates" role="tabpanel" aria-labelledby="sk-settings-updates-tab" hidden><section class="sk-update-card"><h2>Klip güncellemeleri</h2><p class="sk-update-meta" id="sk-update-version"></p><p class="sk-update-status" id="sk-update-status" role="status" aria-live="polite"></p><p class="sk-update-meta" id="sk-update-checked"></p><div class="sk-update-progress-row" id="sk-update-progress-row" hidden><progress id="sk-update-progress" max="1" value="0" aria-label="Güncelleme indirme ilerlemesi"></progress><span id="sk-update-percent"></span></div><div class="sk-update-actions"><button type="button" class="sk-button" id="sk-update-check"><i data-lucide="refresh-cw" aria-hidden="true"></i>Güncellemeleri denetle</button><button type="button" class="sk-button" id="sk-update-download"><i data-lucide="download" aria-hidden="true"></i>İndir</button><button type="button" class="sk-button sk-primary" id="sk-update-install">Uygula ve yeniden başlat</button><button type="button" class="sk-button sk-ghost" id="sk-update-login">GitHub’a bağlan</button></div><p class="sk-update-meta">İndirmek uygulamayı kapatmaz. Uyguladığında açık tampon klip olarak korunur.</p><p class="sk-update-error" id="sk-update-error" hidden></p><div class="sk-update-login" id="sk-update-login-instructions" hidden><p>Bu bilgisayarı GitHub hesabına bağlamak için aşağıdaki kodu resmi GitHub sayfasına gir.</p><input type="text" id="sk-update-login-code" readonly aria-label="GitHub bağlantı kodu"><br><a id="sk-update-login-url" target="_blank" rel="noopener noreferrer">GitHub bağlantı sayfasını aç</a><p class="sk-update-meta">Giriş tarayıcıda tamamlanır; Klip’e şifre girmen gerekmez.</p></div><p class="sk-update-meta" id="sk-update-installing" hidden>Açık tampon klip olarak korunuyor; uygulama yeniden başlatılacak.</p><div class="sk-update-notes" id="sk-update-notes"></div></section></div><div id="sk-settings-audio" role="tabpanel" aria-labelledby="sk-settings-audio-tab" hidden><label class="sk-check"><input type="checkbox" data-setting="autoAudio"><span>Uygulama seslerini otomatik ayır<small>Her uygulama düzenleme sırasında bağımsız bir ses izi olarak kullanılabilir.</small></span></label><div id="sk-audio-list"></div><p class="sk-setting-note">Ses kapasitesi: birleşik ses + dört uygulama + mikrofon. Algılanan uygulamalar kayıt başladıktan sonra bildirilir.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <div class="sk-toast" id="sk-toast" role="status" aria-live="polite" hidden><i data-lucide="check" aria-hidden="true"></i><span id="sk-toast-text"></span></div>
+  <dialog class="sk-dialog" id="sk-update-dialog" aria-labelledby="sk-update-dialog-title"><h2 id="sk-update-dialog-title">Klip güncellemesi</h2><p id="sk-update-dialog-version"></p><div id="sk-update-dialog-status" class="sk-update-status" role="status" aria-live="polite"></div><div class="sk-update-progress-row" id="sk-update-dialog-progress-row" hidden><progress id="sk-update-dialog-progress" max="1" value="0" aria-label="Güncelleme indirme ilerlemesi"></progress><span id="sk-update-dialog-percent"></span></div><div class="sk-update-notes" id="sk-update-dialog-notes"></div><div class="sk-update-error" id="sk-update-dialog-error" hidden></div><p class="sk-update-meta" id="sk-update-dialog-installing" hidden>Açık tampon klip olarak korunuyor; uygulama yeniden başlatılacak.</p><div class="sk-dialog-actions"><button type="button" class="sk-button" id="sk-update-later">Daha sonra</button><button type="button" class="sk-button sk-primary" id="sk-update-now">Şimdi güncelle</button></div></dialog>
+  <div class="sk-menu" id="sk-clip-menu" popover="auto" role="menu" aria-label="Klip işlemleri"><button type="button" id="sk-menu-watch" role="menuitem"><i data-lucide="play" aria-hidden="true"></i>İzle</button><button type="button" id="sk-menu-edit" role="menuitem"><i data-lucide="scissors" aria-hidden="true"></i>Düzenleyicide aç</button><button type="button" id="sk-menu-explorer" role="menuitem"><i data-lucide="folder-open" aria-hidden="true"></i>Windows Dosya Gezgini’nde göster</button><button type="button" id="sk-menu-details" role="menuitem"><i data-lucide="info" aria-hidden="true"></i>Ayrıntılar</button><button type="button" id="sk-menu-delete" role="menuitem" title="Geri Dönüşüm Kutusu’na taşı"><i data-lucide="trash-2" aria-hidden="true"></i><span id="sk-menu-delete-label">Sil</span></button></div>
+  <dialog class="sk-dialog" id="sk-details-dialog" aria-labelledby="sk-details-title"><h2 id="sk-details-title">Klip ayrıntıları</h2><p id="sk-details-text"></p><div class="sk-dialog-actions"><button type="button" class="sk-button" id="sk-details-close">Kapat</button></div></dialog>
+  <dialog class="sk-dialog" id="sk-export-dialog" aria-labelledby="sk-export-title"><h2 id="sk-export-title">Klibi dışa aktar</h2><p>Seçili aralığı aynı oyun klasörüne yeni bir klip olarak ekle.</p><div class="sk-export-summary"><span id="sk-export-range">00:00 – 00:15</span><small id="sk-export-format">Kaynakla aynı</small></div><div class="sk-export-preserve"><i data-lucide="check" aria-hidden="true"></i><span>Çözünürlük, FPS ve görüntü oranı korunur.<br>Yeniden kadrajlama veya esnetme uygulanmaz.</span></div><label class="sk-field"><span>Dosya adı</span><input type="text" id="sk-export-name" maxlength="100" value="klip-kesit.mp4"></label><div class="sk-export-path" id="sk-export-folder"></div><span class="sk-count">Çıktıya dahil edilecek ses izleri</span><div class="sk-export-audio" id="sk-export-audio-controls"><label class="sk-check"><input type="checkbox" checked>Oyun</label><label class="sk-check"><input type="checkbox">Discord</label><label class="sk-check"><input type="checkbox">Mikrofon</label></div><small>Yeni dosya oluşturulur. Orijinal klibin üzerine yazılmaz.</small><div class="sk-dialog-actions"><button type="button" class="sk-button" id="sk-export-cancel">Vazgeç</button><button type="button" class="sk-button sk-primary" id="sk-export-confirm">Dışa aktar</button></div></dialog>
+  <dialog class="sk-dialog sk-explorer" id="sk-explorer-dialog" aria-labelledby="sk-explorer-title"><h2 id="sk-explorer-title">Dosya Gezgini’nde göster</h2><p id="sk-explorer-selection">Klip konumu</p><input type="text" id="sk-explorer-path" readonly aria-label="Dosya Gezgini klasör yolu"><div class="sk-explorer-files" id="sk-explorer-files"></div><small>Prototipte örnek klasör görünümü gösterilir; bilgisayarında Dosya Gezgini açılmaz.</small><div class="sk-dialog-actions"><button type="button" class="sk-button" id="sk-explorer-close">Kapat</button><button type="button" class="sk-button sk-primary" id="sk-explorer-library">Kütüphanede aç</button></div></dialog>
+</div>
+<script type="application/json" id="sk-assets">{"thumbs":[],"video":"","poster":""}</script>
+<script>
+(async () => {
+  const initial=await window.klip.call("init");
+  let lastNativeSettings=JSON.stringify(initial.settings),lastGood={...initial.settings};
+  const root=document.getElementById('sunset-klip-organized');
+  const $=id=>document.getElementById(id);
+  const assets=JSON.parse($('sk-assets').textContent);
+  const video=$('sk-video'), player=$('sk-player');
+  const defaults={mode:'auto',duration:120,resolution:'1920x1080',fps:'60',customFps:90,codec:'h264',storage:'disk',stretch:true,holdFrame:true,cursor:true,hotkey:'F8',sound:true,launch:false,launchMinimized:false,language:'tr',autoBuffer:false,autoAudio:true,folder:'Videolar\\Klip'};
+  let config={...defaults,...initial.settings};let nativeAudio=[];
+  const i18n=window.KlipI18n?.install(root,config.language||'tr');
+  const audioSources=[['mix','Birleşik ses','audio-lines'],['game','Oyun','gamepad-2'],['discord','Discord','headphones'],['browser','Tarayıcı','globe'],['music','Müzik','music-2'],['mic','Mikrofon','mic'],['other','Yeni uygulamaları otomatik ekle','plus']];
+  let audio=Object.fromEntries(audioSources.map(s=>[s[0],true]));
+  const names=['A Site savunması','3’lü seri','Bomba imhası','Uzun menzilli vuruş','Hızlı rotasyon','Smoke içinden','Kafadan vuruş','Son oyuncu','Rahat 4 kişi','Açılış kill’i','B Bölgesi temiz','Keskin nişancı','Yan geçiş','Kule kontrolü','Takım oyunu','Kısa yol','Clutch anı','Ters köşe','Bomba yerleştirme','Duvar arkası','Quad kill','Son saniye','Üst kat baskını','Güzel hareket'];
+  const lengths=[28,75,42,42,68,52,31,84,47,29,72,38,56,33,65,27,49,31,78,26,44,37,66,53];
+  let clips=initial.clips;
+  const games=[...new Set(['Masaüstü','Counter-Strike 2','Valorant','Quake Live',...initial.clips.map(c=>c.game)])];
+  const gameFor=clip=>clip?.game||'Masaüstü';
+  const safeFilename=value=>String(value||'klip.mp4').replace(/[\\/:*?"<>|]/g,'_').trim().slice(0,100)||'klip.mp4';
+  const filenameFor=clip=>safeFilename(clip?.fileName||(clip?.name||'klip')+'.mp4');
+  const fpsLabel=clip=>clip?.fpsUnknown?'Kaynak FPS':Number(clip.fps.toFixed(2))+' FPS';
+  const folderPath=game=>(config.folder||'Videolar\\Klip').replace(/[\\/]+$/,'')+(game&&game!=='all'?'\\'+game:'');
+  clips=clips.map(clip=>({...clip,game:gameFor(clip),fileName:filenameFor(clip)}));
+  let view='grid',page='clips',settingsTab='capture',selectedId=clips[0]?.id||'',gameFolder='all';
+  const selectedIds=new Set();let deleting=false,activeMediaId=selectedId;
+  const trashSelectedIds=new Set();let trashEntries=[],trashLoading=false,trashRestoring=false,trashError='';
+  let trashPreviewId='',trashPreviewGeneration=0;
+  const editorAudio={clipId:'',generation:0,elements:new Map(),urls:new Map(),selections:new Map(),gains:new Map(),masterMuted:false,viewerMuted:false,loading:false,error:'',buffering:false};
+  const editorTimeline={clipId:'',generation:0,frames:[],seconds:0,loading:false,error:'',drag:null};
+  const updateUI={state:{status:'idle',currentVersion:'',latestVersion:'',progress:0,checkedAt:'',notes:'',error:'',offer:false,loginCode:'',loginUrl:''},busy:'',manual:false,discovered:false,nowIntent:false,nowGeneration:0,offeredVersion:'',deferredVersions:new Set()};
+  let running=false,buffered=0,saving=false,waitingKey=false,trimStart=0,trimEnd=15;
+  let menuClip=null,localUrl=null,localFileName='',toastTimer=null,lastSaved='',audioContext=null,pendingTrim=null,explorerGame='all';
+  let mediaBounds={start:0,end:null},playStart=0,playEnd=15;
+  const clipMedia=new Map(),localUrls=new Set();
+  const time=value=>{value=Math.max(0,Math.floor(Number(value)||0));return String(Math.floor(value/60)).padStart(2,'0')+':'+String(value%60).padStart(2,'0');};
+  const precise=value=>time(value)+'.'+Math.floor((value%1+.001)*10);
+  const make=(tag,cls,text)=>{const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el;};
+  const icon=name=>{const el=make('i');el.dataset.lucide=name;el.setAttribute('aria-hidden','true');return el;};
+  const decorate=()=>{root.querySelectorAll('button,select').forEach(el=>el.classList.add('cursor-interaction'));if(globalThis.lucide)globalThis.lucide.createIcons({attrs:{width:17,height:17}});};
+  const selected=()=>clips.find(c=>c.id===selectedId)||clips[0];
+  async function persist(){
+    localStorage.setItem('klip-ui',JSON.stringify({view,gameFolder,settingsTab}));
+    const next=JSON.stringify(config);if(next===lastNativeSettings)return;
+    try{config=await window.klip.call('settings',config);lastGood={...config};lastNativeSettings=JSON.stringify(config);}
+    catch(e){config={...lastGood};renderConfig();notify(e.message);}
+  }
+  function notify(message){clearTimeout(toastTimer);$('sk-toast-text').textContent=message;$('sk-toast').hidden=false;toastTimer=setTimeout(()=>$('sk-toast').hidden=true,4000);}
+  function showPage(next,remember=true){
+    if(next==='capture'){setSettingsTab('capture',false);next='settings';}
+    if(!['clips','capture','viewer','editor','settings','trash'].includes(next))return;
+    if(next!=='trash'&&trashPreviewId)closeTrashPreview();
+    if(page!==next)video.pause();
+    if(next!=='editor'&&editorAudio.clipId)releaseEditorAudio();
+    if(next!=='editor'&&editorTimeline.clipId)releaseEditorTimeline();
+    page=next;
+    const destination=next==='editor'?$('sk-editor-mount'):next==='viewer'?$('sk-viewer-mount'):null;
+    if(destination&&player.parentElement!==destination)destination.append(player);
+    root.querySelectorAll('.sk-main>.sk-page').forEach(el=>el.hidden=el.id!=='sk-page-'+next);
+    root.querySelectorAll('[data-page]').forEach(el=>el.setAttribute('aria-selected',String(el.dataset.page===(next==='viewer'?'clips':next))));
+    if(next==='trash')refreshTrash();
+    if(next==='editor')activateEditorAudio(selected());
+    if(next==='editor')activateEditorTimeline(selected());
+    renderPlayer();
+    if(remember)persist();
+  }
+  function renderBuffer(){
+    $('sk-buffer-dot').dataset.on=String(running);
+    $('sk-buffer-status').textContent=running?'Tampon açık':'Tampon kapalı';
+    $('sk-buffer-time').textContent=time(buffered)+' / '+time(config.duration);
+    $('sk-buffer-fill').style.width=(buffered/config.duration*100)+'%';
+    $('sk-buffer-meter').setAttribute('aria-valuemax',String(config.duration));
+    $('sk-buffer-meter').setAttribute('aria-valuenow',String(buffered));
+    const toggle=$('sk-buffer-toggle');if(toggle.dataset.running!==String(running)){toggle.dataset.running=String(running);toggle.setAttribute('aria-label',running?'Tamponu durdur':'Tamponu başlat');toggle.dataset.tooltip=running?'Tamponu durdur':'Tamponu başlat';toggle.replaceChildren(icon(running?'square':'play'),make('span','sk-toggle-text',running?'Durdur':'Başlat'));decorate();}
+    const status=root.querySelector('.sk-buffer');status.setAttribute('aria-label',running?'Tampon açık':'Tampon kapalı');status.dataset.tooltip=running?'Tampon açık':'Tampon kapalı';
+    $('sk-save').disabled=!running||buffered<1||saving;
+    $('sk-save').setAttribute('aria-busy',String(saving));
+    $('sk-save-label').textContent=saving?'Kaydediliyor…':'Klip al';
+  }
+  function renderConfig(){
+    i18n?.setLanguage(config.language||'tr');
+    root.querySelectorAll('[data-setting]').forEach(el=>{const value=config[el.dataset.setting];if(el.type==='checkbox')el.checked=value;else el.value=String(value);});
+    renderStartupOption();
+    root.querySelectorAll('[data-custom-fps]').forEach(el=>el.hidden=config.fps!=='custom');
+    const descriptions={screen:'Seçili ekranı kaydeder.',game:'Oyun penceresini izler. Alt+Tab yaptığında masaüstü kayda girmez.',auto:'Oyundayken oyun, masaüstüne geçtiğinde ekran. Her iki kaynak tek klipte birleşir.'};
+    $('sk-mode-note').textContent=descriptions[config.mode];
+    $('sk-folder-label').textContent=folderPath(gameFolder);
+    $('sk-folder-label').dataset.tooltip=folderPath(gameFolder);
+    $('sk-save-key').textContent=config.hotkey;
+    $('sk-save').setAttribute('aria-label','Klip al · '+config.hotkey);
+    $('sk-save-key').dataset.tooltip=config.hotkey;
+    $('sk-hotkey').textContent=waitingKey?'Yeni tuşa bas…':config.hotkey;
+    $('sk-hotkey-note').textContent=waitingKey?'Yeni kısayolunu bas. Vazgeçmek için Escape.':'Değiştirmek için tuşa tıkla ve yeni kısayolunu bas.';
+    buffered=Math.min(buffered,config.duration);renderBuffer();
+    const dock=root.querySelector('.sk-dock');root.style.setProperty('--sk-toast-top',(dock.offsetTop+dock.offsetHeight+12)+'px');
+  }
+  function renderFolders(){
+    const bar=$('sk-game-folders');bar.replaceChildren();
+    for(const game of ['all',...games]){
+      const button=make('button','sk-folder cursor-interaction');button.type='button';button.setAttribute('aria-label',game==='all'?'Tüm oyun klasörleri':game+' klasörü');button.setAttribute('aria-pressed',String(gameFolder===game));
+      button.append(icon(game==='all'?'folders':'folder'),make('span','',game==='all'?'Tüm oyunlar':game),make('small','',String(game==='all'?clips.length:clips.filter(c=>gameFor(c)===game).length)));
+      button.addEventListener('click',()=>{if(deleting)return;selectedIds.clear();gameFolder=game;$('sk-library-body').scrollTop=0;renderClips();persist();});bar.append(button);
+    }
+  }
+  function showExplorer(clip=selected()){if(clip)window.klip.call('explorer',clip.id).catch(e=>notify(e.message));}
+  function libraryClips(){
+    const visible=gameFolder==='all'?clips:clips.filter(c=>gameFor(c)===gameFolder);
+    return view==='grid'?['today','yesterday'].flatMap(day=>visible.filter(c=>c.day===day)):visible;
+  }
+  function selectClip(clip,additive=false){
+    if(deleting)return;
+    if(!libraryClips().some(c=>c.id===clip.id))return;
+    if(additive){if(selectedIds.has(clip.id))selectedIds.delete(clip.id);else selectedIds.add(clip.id);}else{selectedIds.clear();selectedIds.add(clip.id);}
+    syncLibrarySelection();
+  }
+  function syncLibrarySelection(){
+    const valid=new Set(clips.map(c=>c.id));for(const id of selectedIds)if(!valid.has(id))selectedIds.delete(id);
+    root.querySelectorAll('[data-clip-id]').forEach(el=>{const on=selectedIds.has(el.dataset.clipId);el.dataset.selected=String(on);const check=el.querySelector('.sk-select-check');if(check){check.setAttribute('aria-checked',String(on));check.disabled=deleting;}});
+    const count=selectedIds.size;$('sk-selection-actions').hidden=count===0;$('sk-selection-count').textContent=count+' seçili';
+    $('sk-delete-selected').disabled=deleting||!count;$('sk-clear-selection').disabled=deleting;
+    $('sk-delete-selected').setAttribute('aria-busy',String(deleting));$('sk-delete-label').textContent=deleting?'Siliniyor…':'Sil';
+    for(const id of ['sk-menu-watch','sk-menu-edit','sk-menu-details'])$(id).disabled=deleting||count!==1;
+    $('sk-menu-explorer').disabled=deleting||!menuClip;$('sk-menu-delete').disabled=deleting||!count;
+    $('sk-menu-delete-label').textContent=count>1?'Sil · '+count+' klip':'Sil';
+  }
+  async function deleteSelection(){
+    const ids=[...selectedIds].filter(id=>clips.some(c=>c.id===id));if(deleting||!ids.length)return;
+    const beforeDelete=[...clips];
+    deleting=true;$('sk-clip-menu').hidePopover();
+    if(ids.includes(activeMediaId)){video.pause();video.removeAttribute('src');video.removeAttribute('poster');video.load();activeMediaId='';if(page==='viewer'||page==='editor')showPage('clips');}
+    syncLibrarySelection();
+    try{
+      const native=Boolean(window.klip),result=native?await window.klip.call('delete',{ids}):{clips:clips.filter(c=>!ids.includes(c.id)),deleted:ids,failed:[]};
+      const deleted=new Set(result.deleted),failed=new Set((result.failed||[]).map(item=>item.id));
+      const merged=new Map(result.clips.filter(clip=>!deleted.has(clip.id)).map(clip=>[clip.id,clip]));
+      for(const clip of [...clips,...beforeDelete])if(!deleted.has(clip.id)&&!merged.has(clip.id)&&(clip.game==='İçe aktarılanlar'||failed.has(clip.id)))merged.set(clip.id,clip);
+      clips=[...merged.values()];for(const id of ids)if(deleted.has(id))selectedIds.delete(id);else if(merged.has(id))selectedIds.add(id);
+      if(result.deleted.includes(selectedId))selectedId=clips[0]?.id||'';
+      const failures=result.failed||[];
+      notify(failures.length?result.deleted.length+' klip silindi; '+failures.length+' klip silinemedi. '+failures[0].error:native?result.deleted.length+' klip Geri Dönüşüm Kutusu’na taşındı.':'Örnek klipler kaldırıldı; gerçek dosyalar değiştirilmedi.');
+      renderClips();persist();
+    }catch(error){notify('Klipler silinemedi: '+error.message);}
+    finally{deleting=false;syncLibrarySelection();}
+  }
+  function openMenu(clip,trigger,event){
+    if(deleting)return;if(!selectedIds.has(clip.id))selectClip(clip);
+    menuClip=clip;syncLibrarySelection();
+    const menu=$('sk-clip-menu');if(!menu.matches(':popover-open'))menu.showPopover();
+    const rect=trigger.getBoundingClientRect(),box=menu.getBoundingClientRect();
+    const x=event?.clientX??rect.right-box.width,y=event?.clientY??rect.bottom+5;
+    menu.style.left=Math.max(8,Math.min(innerWidth-box.width-8,x))+'px';
+    menu.style.top=Math.max(8,Math.min(innerHeight-box.height-8,y))+'px';
+    menu.querySelector('button:not(:disabled)')?.focus({preventScroll:true});
+  }
+  function menuButton(clip){const b=make('button','sk-more cursor-interaction');b.type='button';b.setAttribute('aria-label',clip.name+' seçenekleri');b.setAttribute('aria-haspopup','menu');b.append(icon('more-vertical'));b.addEventListener('click',event=>{event.stopPropagation();openMenu(clip,b);});return b;}
+  function selectionCheckbox(clip,row=false){
+    const check=make('button','sk-select-check cursor-interaction'+(row?' sk-row-check':''));check.type='button';check.setAttribute('role','checkbox');check.setAttribute('aria-label',clip.name+' klibini seç');check.setAttribute('aria-checked',String(selectedIds.has(clip.id)));check.disabled=deleting;check.append(icon('check'));
+    check.addEventListener('click',event=>{event.stopPropagation();selectClip(clip,true);});
+    check.addEventListener('dblclick',event=>event.stopPropagation());return check;
+  }
+  function bindClipSelection(element,button,clip){
+    element.dataset.clipId=clip.id;element.dataset.selected=String(selectedIds.has(clip.id));button.setAttribute('aria-label',clip.name+' klibini izle');
+    element.addEventListener('click',event=>{if(event.target.closest('.sk-more,.sk-row-actions,.sk-select-check')||deleting)return;openClip(clip,'viewer');});
+    element.addEventListener('contextmenu',event=>{event.preventDefault();event.stopPropagation();openMenu(clip,element,event);});
+    button.addEventListener('keydown',event=>{if(event.key==='ContextMenu'||(event.shiftKey&&event.key==='F10')){event.preventDefault();event.stopPropagation();openMenu(clip,button);}});
+  }
+  function handleLibraryKey(event){
+    if(page!=='clips'||waitingKey||event.repeat||root.querySelector('dialog[open]'))return;
+    const target=event.target;if(target.closest('input,select,textarea,[contenteditable]:not([contenteditable=false])'))return;
+    const key=event.key.toLowerCase();
+    if(event.ctrlKey||event.metaKey||event.altKey)return;
+    if(key==='escape'){event.preventDefault();event.stopImmediatePropagation();$('sk-clip-menu').hidePopover();if(!deleting){selectedIds.clear();syncLibrarySelection();}}
+    if(key==='delete'&&selectedIds.size){event.preventDefault();event.stopImmediatePropagation();deleteSelection();}
+    if(key==='enter'&&selectedIds.size===1&&!$('sk-clip-menu').matches(':popover-open')&&!target.closest('button')){event.preventDefault();event.stopImmediatePropagation();if(!deleting)openClip(clips.find(c=>selectedIds.has(c.id)),'viewer');}
+  }
+  function renderClips(){
+    const body=$('sk-library-body'),scrollTop=body.scrollTop;body.replaceChildren();
+    const visibleClips=libraryClips();
+    root.querySelector('#sk-page-clips h1').textContent=gameFolder==='all'?'Kliplerim':gameFolder;
+    $('sk-clip-count').textContent=visibleClips.length+' klip';
+    $('sk-folder-label').textContent=folderPath(gameFolder);$('sk-folder-label').dataset.tooltip=folderPath(gameFolder);renderFolders();
+    $('sk-view-grid').setAttribute('aria-pressed',String(view==='grid'));$('sk-view-list').setAttribute('aria-pressed',String(view==='list'));
+    if(view==='grid'){
+      for(const day of ['today','yesterday']){
+        const group=visibleClips.filter(c=>c.day===day);if(!group.length)continue;
+        const section=make('section','sk-group'),grid=make('div','sk-grid');section.append(make('h2','',day==='today'?'Bugün':'Dün'),grid);
+        for(const clip of group){
+          const card=make('article','sk-card');
+          const button=make('button','sk-card-open cursor-interaction');button.type='button';button.setAttribute('aria-label',clip.name+' klibini aç');button.dataset.tooltip=clip.name;
+          const thumb=make('span','sk-thumb'),image=make('img');image.src=clip.thumbnail||'';image.alt='';image.draggable=false;thumb.append(image,make('span','sk-duration',time(clip.seconds)));
+          button.append(thumb,make('span','sk-card-name',clip.name),make('span','sk-card-date',(day==='today'?'Bugün ':'Dün ')+clip.clock));
+          bindClipSelection(card,button,clip);card.append(button,selectionCheckbox(clip),menuButton(clip));grid.append(card);
+        }body.append(section);
+      }
+    }else{
+      const wrap=make('div','sk-list-wrap'),table=make('table','sk-table'),thead=make('thead'),header=make('tr');
+      for(const label of ['Ad','Tarih','Süre','Kalite','Ses izleri','İşlemler']){const th=make('th','',label);th.scope='col';header.append(th);}thead.append(header);table.append(thead);
+      const tbody=make('tbody');
+      for(const clip of visibleClips){
+        const row=make('tr');
+        const first=make('td'),open=make('button','sk-row-open cursor-interaction');open.type='button';open.setAttribute('aria-label',clip.name+' klibini aç');open.dataset.tooltip=clip.name;
+        const image=make('img');image.src=clip.thumbnail||'';image.alt='';const thumb=make('span','sk-row-thumb');thumb.append(image,make('span','sk-duration',time(clip.seconds)));open.append(thumb,make('span','sk-row-name',clip.name));bindClipSelection(row,open,clip);const leading=make('div','sk-row-leading');leading.append(selectionCheckbox(clip,true),open);first.append(leading);row.append(first);
+        row.append(make('td','sk-muted',(clip.day==='today'?'Bugün ':'Dün ')+clip.clock),make('td','',time(clip.seconds)),make('td','sk-muted',clip.resolution.split('x')[1]+'p · '+fpsLabel(clip)),make('td','sk-muted',clip.tracks+' ses izi'));
+        const last=make('td'),actions=make('div','sk-row-actions'),edit=make('button','sk-icon-button cursor-interaction');edit.type='button';edit.setAttribute('aria-label',clip.name+' klibini düzenle');edit.dataset.tooltip='Düzenle';edit.append(icon('scissors'));edit.addEventListener('click',()=>openClip(clip,'editor'));
+        const more=menuButton(clip);more.className='sk-icon-button cursor-interaction';actions.append(edit,more);last.append(actions);row.append(last);tbody.append(row);
+      }table.append(tbody);wrap.append(table);body.append(wrap);
+    }
+    if(!visibleClips.length)body.replaceChildren(make('p','sk-empty','Bu klasörde henüz klip yok. Tamponu başlatıp F8 ile ilk klibini al.'));
+    body.scrollTop=scrollTop;syncLibrarySelection();decorate();
+  }
+  function updateLoginLink(value){
+    try{const url=new URL(value);return url.protocol==='https:'&&url.hostname==='github.com'&&url.pathname==='/login/device'&&!url.username&&!url.password?url.href:null;}catch{return null;}
+  }
+  function applyUpdateResult(result){
+    const state=result?.state||result;if(state&&typeof state.status==='string')receiveUpdateState(state);
+  }
+  function renderUpdateUI(){
+    const state=updateUI.state,status=state.status,busy=Boolean(updateUI.busy),installing=status==='installing';
+    const labels={idle:'Güncellemeleri buradan denetleyebilirsin.',checking:'Güncellemeler denetleniyor…',current:'Klip güncel.',available:'Yeni bir Klip sürümü var.',downloading:'Güncelleme indiriliyor…',ready:'Güncelleme uygulanmaya hazır.',installing:'Güncelleme uygulanıyor…',error:'Güncelleme tamamlanamadı.','auth-required':'Özel güncellemelere erişmek için GitHub’a bağlan.'};
+    const label=labels[status]||labels.idle,version='Mevcut sürüm: '+(state.currentVersion||'—')+(state.latestVersion?' · Yeni sürüm: '+state.latestVersion:'');
+    const badge=$('sk-update-badge');badge.hidden=!(updateUI.discovered||['available','downloading','ready','installing'].includes(status)||(updateUI.manual&&['error','auth-required'].includes(status)));badge.setAttribute('aria-label',label);badge.title=label;badge.dataset.status=status;
+    $('sk-update-status').textContent=label;$('sk-update-version').textContent=version;$('sk-update-dialog-version').textContent=version;$('sk-update-dialog-status').textContent=label;$('sk-update-dialog-title').textContent=status==='ready'?'Klip güncellemesi hazır':'Klip güncellemesi';
+    const checked=new Date(state.checkedAt);$('sk-update-checked').textContent=state.checkedAt&&Number.isFinite(checked.getTime())?'Son denetleme: '+checked.toLocaleString('tr-TR'):'Henüz denetlenmedi.';
+    const progress=Math.max(0,Math.min(1,Number(state.progress)||0));for(const prefix of ['sk-update','sk-update-dialog']){$(prefix+'-progress').value=progress;$(prefix+'-progress-row').hidden=!['downloading','ready'].includes(status);$(prefix+'-percent').textContent=Math.round(progress*100)+'%';$(prefix+'-notes').textContent=String(state.notes||'');$(prefix+'-notes').hidden=!state.notes;$(prefix+'-error').textContent=String(state.error||'');$(prefix+'-error').hidden=!state.error;$(prefix+'-installing').hidden=!installing;}
+    $('sk-update-check').disabled=busy||['checking','downloading','installing'].includes(status);$('sk-update-download').disabled=busy||status!=='available';$('sk-update-install').disabled=busy||status!=='ready';$('sk-update-login').disabled=busy||installing;$('sk-update-login').textContent=updateUI.busy==='login'?'Bağlantı bekleniyor…':'GitHub’a bağlan';
+    $('sk-update-now').disabled=busy||updateUI.nowIntent||!['available','ready'].includes(status);$('sk-update-now').textContent=status==='ready'?'Şimdi uygula':status==='downloading'?'İndiriliyor…':installing?'Uygulanıyor…':'Şimdi güncelle';$('sk-update-later').disabled=installing;
+    $('sk-update-login-instructions').hidden=!state.loginCode;$('sk-update-login-code').value=String(state.loginCode||'');const link=updateLoginLink(state.loginUrl),anchor=$('sk-update-login-url');if(link){anchor.href=link;anchor.hidden=false;}else{anchor.removeAttribute('href');anchor.hidden=true;}
+  }
+  function receiveUpdateState(incoming){
+    if(!incoming||typeof incoming!=='object')return;const statuses=['idle','checking','current','available','downloading','ready','installing','error','auth-required'];
+    updateUI.state={...updateUI.state,...incoming};if(!statuses.includes(updateUI.state.status))updateUI.state.status='idle';
+    if(['available','downloading','ready','installing'].includes(updateUI.state.status))updateUI.discovered=true;else if(updateUI.state.status==='current')updateUI.discovered=false;
+    renderUpdateUI();const version=String(updateUI.state.latestVersion||'available');
+    if(updateUI.state.status==='available'&&incoming.offer===true&&updateUI.offeredVersion!==version&&!updateUI.deferredVersions.has(version)){updateUI.offeredVersion=version;openUpdateDialog();}
+  }
+  function openUpdateDialog(){
+    video.pause();syncEditorAudio();$('sk-trash-preview-video').pause();const dialog=$('sk-update-dialog');renderUpdateUI();if(!dialog.open)dialog.showModal();
+  }
+  function deferUpdateDialog(){
+    if(updateUI.state.status==='installing')return;updateUI.nowIntent=false;updateUI.nowGeneration++;updateUI.deferredVersions.add(String(updateUI.state.latestVersion||'available'));const dialog=$('sk-update-dialog');if(dialog.open)dialog.close();renderUpdateUI();
+  }
+  async function acceptUpdateNow(){
+    if(updateUI.busy||!['available','ready'].includes(updateUI.state.status))return;const generation=++updateUI.nowGeneration;updateUI.nowIntent=true;updateUI.manual=true;
+    try{
+      if(!window.klip)throw new Error('Güncellemeler masaüstü uygulamasında kullanılabilir.');
+      if(updateUI.state.status!=='ready'){updateUI.busy='download';receiveUpdateState({status:'downloading',progress:0,error:'',offer:false});applyUpdateResult(await window.klip.call('update-download'));}
+      if(generation!==updateUI.nowGeneration||!updateUI.nowIntent||!$('sk-update-dialog').open)return;
+      if(updateUI.state.status!=='ready')throw new Error('İndirme henüz hazır değil. Hazır olduğunda Uygula düğmesini kullanabilirsin.');
+      updateUI.busy='install';receiveUpdateState({status:'installing',error:'',offer:false});applyUpdateResult(await window.klip.call('update-install'));
+    }catch(error){receiveUpdateState({status:'error',error:error.message,offer:false});}
+    finally{updateUI.busy='';if(generation===updateUI.nowGeneration)updateUI.nowIntent=false;renderUpdateUI();}
+  }
+  async function runUpdateAction(action){
+    if(updateUI.busy||!['check','download','install','login'].includes(action))return;if(action==='download'&&updateUI.state.status!=='available')return;if(action==='install'&&updateUI.state.status!=='ready')return;
+    updateUI.manual=true;updateUI.busy=action;const next=action==='check'?'checking':action==='download'?'downloading':action==='install'?'installing':updateUI.state.status;receiveUpdateState({status:next,error:'',offer:false});
+    try{if(!window.klip)throw new Error('Güncellemeler masaüstü uygulamasında kullanılabilir.');const result=action==='check'?await window.klip.call('update-check',{manual:true}):await window.klip.call('update-'+action);applyUpdateResult(result);}
+    catch(error){receiveUpdateState({status:'error',error:error.message,offer:false});}
+    finally{updateUI.busy='';renderUpdateUI();}
+  }
+  function releaseEditorTimeline(){
+    editorTimeline.generation++;editorTimeline.clipId='';editorTimeline.frames=[];editorTimeline.seconds=0;editorTimeline.loading=false;editorTimeline.error='';editorTimeline.drag=null;
+    const frames=$('sk-timeline-frames');for(const image of frames.querySelectorAll('img'))image.removeAttribute('src');frames.replaceChildren();$('sk-timeline-ruler').replaceChildren();$('sk-timeline-status').textContent='';
+  }
+  async function activateEditorTimeline(clip=selected()){
+    if(!clip){releaseEditorTimeline();return;}if(page!=='editor')return;if(editorTimeline.clipId===clip.id&&(editorTimeline.loading||editorTimeline.frames.length))return;
+    releaseEditorTimeline();editorTimeline.clipId=clip.id;editorTimeline.seconds=Math.max(.1,Number(clip.seconds)||playEnd-playStart);editorTimeline.loading=true;const generation=editorTimeline.generation;renderEditorTimeline();
+    try{
+      if(!window.klip)throw new Error('Kare önizlemesi masaüstü uygulamasında kullanılabilir.');const result=await window.klip.call('editor-timeline',{id:clip.id});
+      if(generation!==editorTimeline.generation||editorTimeline.clipId!==clip.id||page!=='editor')return;if(result.id!==clip.id||!Array.isArray(result.frames))throw new Error('Kareler alınamadı.');
+      editorTimeline.seconds=Math.max(.1,Number(result.seconds)||editorTimeline.seconds);editorTimeline.frames=result.frames.filter(frame=>Number.isFinite(frame.time)&&frame.time>=0&&typeof frame.url==='string'&&frame.url.startsWith('klipmedia:')).sort((a,b)=>a.time-b.time);
+    }catch(error){if(generation!==editorTimeline.generation||editorTimeline.clipId!==clip.id)return;editorTimeline.error='Kareler yüklenemedi. Yeniden deneyebilirsin.';}
+    finally{if(generation===editorTimeline.generation&&editorTimeline.clipId===clip.id){editorTimeline.loading=false;renderEditorTimeline();}}
+  }
+  function renderEditorTimeline(){
+    const frames=$('sk-timeline-frames'),ruler=$('sk-timeline-ruler');frames.replaceChildren();ruler.replaceChildren();
+    for(const frame of editorTimeline.frames){const image=make('img');image.src=frame.url;image.alt='';image.draggable=false;image.decoding='async';image.addEventListener('error',()=>image.hidden=true);frames.append(image);}
+    const duration=Math.max(.1,playEnd-playStart||editorTimeline.seconds),ticks=8;for(let index=0;index<=ticks;index++){const tick=make('span','sk-timeline-tick',duration<16?precise(duration*index/ticks):time(duration*index/ticks));tick.style.left=(index/ticks*100)+'%';ruler.append(tick);}
+    const status=$('sk-timeline-status');status.textContent=editorTimeline.loading?'Kareler hazırlanıyor…':editorTimeline.error||(!editorTimeline.frames.length?'Bu klip için önizleme karesi yok.':'');status.hidden=!status.textContent;syncEditorTimelinePosition();
+  }
+  function syncEditorTimelinePosition(){
+    const duration=Math.max(.1,playEnd-playStart),percent=value=>Math.max(0,Math.min(100,(value-playStart)/duration*100));
+    const start=percent(trimStart),end=percent(trimEnd);$('sk-trim-selection').style.left=start+'%';$('sk-trim-selection').style.width=Math.max(0,end-start)+'%';$('sk-timeline-dim-left').style.width=start+'%';$('sk-timeline-dim-right').style.width=(100-end)+'%';$('sk-timeline-playhead').style.left=percent(video.currentTime||playStart)+'%';$('sk-timeline-position').textContent=precise(Math.max(0,(video.currentTime||playStart)-playStart))+' / '+time(duration);
+    for(const [id,value,minimum,maximum]of [['sk-timeline-in',trimStart,playStart,trimEnd-.1],['sk-timeline-out',trimEnd,trimStart+.1,playEnd]]){const handle=$(id);handle.style.left=percent(value)+'%';handle.setAttribute('aria-valuemin',String(minimum));handle.setAttribute('aria-valuemax',String(maximum));handle.setAttribute('aria-valuenow',String(value));handle.setAttribute('aria-valuetext',precise(value-playStart));}
+  }
+  function timelineTimeAt(clientX){
+    const rect=$('sk-timeline-track').getBoundingClientRect(),ratio=rect.width?Math.max(0,Math.min(1,(clientX-rect.left)/rect.width)):0;return playStart+ratio*Math.max(.1,playEnd-playStart);
+  }
+  function seekEditorTimeline(event){
+    if(event.target.closest('.sk-timeline-handle'))return;video.pause();video.currentTime=timelineTimeAt(event.clientX);syncEditorAudio(true);syncEditorTimelinePosition();
+  }
+  function beginTimelineDrag(event,edge){
+    event.preventDefault();event.stopPropagation();editorTimeline.drag={edge,pointerId:event.pointerId,target:event.currentTarget};event.currentTarget.setPointerCapture?.(event.pointerId);moveTimelineDrag(event);
+  }
+  function moveTimelineDrag(event){
+    const drag=editorTimeline.drag;if(!drag||drag.pointerId!==event.pointerId)return;event.preventDefault();video.pause();const value=timelineTimeAt(event.clientX);if(drag.edge==='start'){setStart(value);video.currentTime=trimStart;}else{setEnd(value);video.currentTime=trimEnd;}syncEditorAudio(true);syncEditorTimelinePosition();
+  }
+  function endTimelineDrag(event){
+    const drag=editorTimeline.drag;if(!drag||drag.pointerId!==event.pointerId)return;try{drag.target.releasePointerCapture?.(event.pointerId);}catch{}editorTimeline.drag=null;persist();
+  }
+  function keyboardTimelineHandle(event,edge){
+    if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;event.preventDefault();event.stopPropagation();video.pause();const current=edge==='start'?trimStart:trimEnd,step=event.shiftKey?1:.1,value=event.key==='Home'?playStart:event.key==='End'?playEnd:current+(event.key==='ArrowRight'?step:-step);if(edge==='start'){setStart(value);video.currentTime=trimStart;}else{setEnd(value);video.currentTime=trimEnd;}syncEditorAudio(true);syncEditorTimelinePosition();persist();
+  }
+  function editorAudioTracks(clip=selected()){
+    const tracks=Array.isArray(clip?.audio)?clip.audio:Array.from({length:Math.max(0,Math.min(32,Number(clip?.tracks)||0))},(_,index)=>({index,name:'Ses '+(index+1)}));
+    return [...new Map(tracks.filter(track=>Number.isInteger(track.index)&&track.index>=0).map(track=>[track.index,{index:track.index,name:String(track.name||'Ses '+(track.index+1))}])).values()].sort((a,b)=>a.index-b.index);
+  }
+  function editorCombinedAudioIndex(clip=selected()){
+    const tracks=editorAudioTracks(clip),first=tracks.find(track=>track.index===0);return tracks.length>1&&first&&/birle[şs]ik|(^|[\s_-])mix(?:ed)?([\s_-]|$)|combined/i.test(first.name)?0:null;
+  }
+  function ensureEditorAudioSelection(clip=selected()){
+    if(!clip)return new Set();const tracks=editorAudioTracks(clip),valid=new Set(tracks.map(track=>track.index));
+    if(!editorAudio.selections.has(clip.id)){const combined=editorCombinedAudioIndex(clip);editorAudio.selections.set(clip.id,new Set(tracks.filter(track=>track.index!==combined).map(track=>track.index)));}
+    const selection=editorAudio.selections.get(clip.id);for(const index of selection)if(!valid.has(index))selection.delete(index);return selection;
+  }
+  function selectedEditorAudioIndexes(clip=selected()){
+    return [...ensureEditorAudioSelection(clip)].sort((a,b)=>a-b);
+  }
+  function ensureEditorAudioGains(clip=selected()){
+    if(!editorAudio.gains)editorAudio.gains=new Map();if(!clip)return new Map();if(!editorAudio.gains.has(clip.id))editorAudio.gains.set(clip.id,new Map());const gains=editorAudio.gains.get(clip.id);for(const track of editorAudioTracks(clip))if(!gains.has(track.index))gains.set(track.index,1);return gains;
+  }
+  function selectedEditorAudioVolumes(clip=selected()){
+    const gains=ensureEditorAudioGains(clip);return Object.fromEntries(selectedEditorAudioIndexes(clip).map(index=>[index,gains.get(index)??1]));
+  }
+  function setEditorAudioVolume(index,percent,clip=selected()){
+    if(!editorAudioTracks(clip).some(track=>track.index===index)||!Number.isFinite(Number(percent)))return;ensureEditorAudioGains(clip).set(index,Math.max(0,Math.min(100,Number(percent)))/100);syncEditorAudioControls(clip);if(page==='editor'&&editorAudio.clipId===clip?.id)syncEditorAudio();
+  }
+  function setEditorAudioTrack(index,on,clip=selected()){
+    if(!editorAudioTracks(clip).some(track=>track.index===index))return;const selection=ensureEditorAudioSelection(clip),combined=editorCombinedAudioIndex(clip);
+    if(on){if(combined!==null){if(index===combined)selection.clear();else selection.delete(combined);}selection.add(index);}else selection.delete(index);
+    syncEditorAudioControls(clip);if(page==='editor'&&editorAudio.clipId===clip.id)return refreshEditorAudio(clip);
+  }
+  function syncEditorAudioControls(clip=selected()){
+    const selection=ensureEditorAudioSelection(clip);root.querySelectorAll('[data-editor-audio-index],[data-export-audio-index]').forEach(input=>{const index=Number(input.dataset.editorAudioIndex??input.dataset.exportAudioIndex);input.checked=selection.has(index);});
+    const gains=ensureEditorAudioGains(clip);root.querySelectorAll('[data-editor-audio-volume]').forEach(input=>{const index=Number(input.dataset.editorAudioVolume);input.value=String(Math.round((gains.get(index)??1)*100));input.disabled=!selection.has(index);});root.querySelectorAll('[data-editor-audio-percent]').forEach(output=>{output.textContent=Math.round((gains.get(Number(output.dataset.editorAudioPercent))??1)*100)+'%';});
+    $('sk-editor-audio-status').textContent=editorAudio.error||(editorAudio.loading?'Ses izleri hazırlanıyor…':selection.size?selection.size+' ses izi açık · Çıktıda aynı seçim kullanılır.':editorAudioTracks(clip).length?'Tüm sesler kapalı · Çıktı sessiz olacak.':'Bu klipte ses izi yok. Çıktı sessiz olacak.');$('sk-editor-audio-retry').hidden=!editorAudio.error;
+  }
+  function renderEditorAudio(clip=selected()){
+    const box=$('sk-editor-audio-tracks');box.replaceChildren();const selection=ensureEditorAudioSelection(clip);
+    const gains=ensureEditorAudioGains(clip);
+    for(const track of editorAudioTracks(clip)){
+      const row=make('div','sk-editor-audio-track'),label=make('label','sk-editor-audio-toggle'),input=make('input');input.type='checkbox';input.setAttribute('role','switch');input.dataset.editorAudioIndex=String(track.index);input.checked=selection.has(track.index);input.setAttribute('aria-label',track.name+' Sesini Çıktıya Dahil Et');input.addEventListener('change',()=>setEditorAudioTrack(track.index,input.checked,clip));const name=make('span','sk-editor-audio-name',track.name);name.title=track.name;label.append(input,name);
+      const gainRow=make('div','sk-editor-gain-row'),slider=make('input'),percent=make('output');slider.type='range';slider.min='0';slider.max='100';slider.step='1';slider.value=String(Math.round((gains.get(track.index)??1)*100));slider.dataset.editorAudioVolume=String(track.index);slider.setAttribute('aria-label',track.name+' Ses Düzeyi');slider.disabled=!selection.has(track.index);slider.addEventListener('input',()=>setEditorAudioVolume(track.index,slider.value,clip));percent.dataset.editorAudioPercent=String(track.index);percent.textContent=slider.value+'%';gainRow.append(slider,percent);row.append(label,gainRow);box.append(row);
+    }syncEditorAudioControls(clip);
+  }
+  function renderExportAudio(clip=selected()){
+    const box=$('sk-export-audio-controls');box.replaceChildren();const selection=ensureEditorAudioSelection(clip);
+    for(const track of editorAudioTracks(clip)){const label=make('label','sk-check'),input=make('input');input.type='checkbox';input.value=String(track.index);input.dataset.exportAudioIndex=String(track.index);input.checked=selection.has(track.index);input.addEventListener('change',()=>setEditorAudioTrack(track.index,input.checked,clip));label.append(input,make('span','sk-editor-audio-name',track.name));box.append(label);}
+  }
+  function releaseEditorAudioElement(entry){
+    entry.playGeneration++;entry.pending=false;entry.media.muted=true;entry.media.pause();entry.media.removeAttribute('src');entry.media.load();
+  }
+  function releaseEditorAudio(){
+    editorAudio.generation++;for(const entry of editorAudio.elements.values())releaseEditorAudioElement(entry);editorAudio.elements.clear();
+    const wasActive=Boolean(editorAudio.clipId);editorAudio.clipId='';editorAudio.loading=false;editorAudio.error='';editorAudio.buffering=false;if(wasActive)video.muted=editorAudio.viewerMuted;
+  }
+  function createEditorAudioElement(index,url){
+    const media=make('audio');media.preload='auto';media.src=url;media.muted=true;const entry={media,index,playGeneration:0,pending:false};editorAudio.elements.set(index,entry);
+    media.addEventListener('loadedmetadata',()=>{if(editorAudio.elements.get(index)===entry)syncEditorAudio(true);});
+    media.addEventListener('error',()=>{if(editorAudio.elements.get(index)!==entry||page!=='editor')return;editorAudio.error='Bir ses izi oynatılamadı. Yeniden deneyebilirsin.';video.pause();syncEditorAudioControls();});media.load();return entry;
+  }
+  function syncEditorAudio(force=false){
+    if(page!=='editor'||!editorAudio.clipId)return;if(!video.muted)video.muted=true;
+    const wanted=ensureEditorAudioSelection(),ready=!editorAudio.loading&&!editorAudio.error&&[...wanted].every(index=>editorAudio.elements.has(index));
+    if(!ready&&!video.paused)video.pause();
+    for(const [index,entry]of editorAudio.elements){const media=entry.media,active=editorAudio.elements.get(index)===entry&&wanted.has(index),play=active&&ready&&!video.paused&&!video.seeking&&!video.ended&&!editorAudio.buffering;
+      media.volume=video.volume*(ensureEditorAudioGains().get(index)??1);media.playbackRate=video.playbackRate||1;media.muted=!play||editorAudio.masterMuted;
+      if(force||Math.abs((media.currentTime||0)-(video.currentTime||0))>.12)try{media.currentTime=video.currentTime||0;}catch{}
+      if(!play){entry.playGeneration++;entry.pending=false;media.pause();continue;}
+      if(media.paused&&!entry.pending){const token=++entry.playGeneration;entry.pending=true;Promise.resolve(media.play()).then(()=>{if(token===entry.playGeneration)entry.pending=false;if(page!=='editor'||editorAudio.elements.get(index)!==entry||!ensureEditorAudioSelection().has(index)||video.paused||editorAudio.buffering){media.muted=true;media.pause();}}).catch(()=>{if(token!==entry.playGeneration||editorAudio.elements.get(index)!==entry)return;entry.pending=false;editorAudio.error='Ses oynatılamadı. Yeniden deneyebilirsin.';video.pause();syncEditorAudioControls();});}
+    }
+  }
+  async function refreshEditorAudio(clip=selected()){
+    if(page!=='editor'||!clip||editorAudio.clipId!==clip.id)return;const generation=++editorAudio.generation,wanted=ensureEditorAudioSelection(clip);
+    for(const [index,entry]of editorAudio.elements)if(!wanted.has(index)){releaseEditorAudioElement(entry);editorAudio.elements.delete(index);}
+    let urls=editorAudio.urls.get(clip.id);if(!urls){urls=new Map();editorAudio.urls.set(clip.id,urls);}
+    for(const index of wanted)if(urls.has(index)&&!editorAudio.elements.has(index))createEditorAudioElement(index,urls.get(index));
+    const missing=[...wanted].filter(index=>!editorAudio.elements.has(index));editorAudio.error='';editorAudio.loading=missing.length>0;if(editorAudio.loading)video.pause();syncEditorAudioControls(clip);syncEditorAudio(true);if(!missing.length)return;
+    try{
+      if(!window.klip)throw new Error('Bağımsız ses önizlemesi masaüstü uygulamasında kullanılabilir.');
+      const tracks=await window.klip.call('editor-audio',{id:clip.id,tracks:missing});
+      if(generation!==editorAudio.generation||page!=='editor'||editorAudio.clipId!==clip.id)return;
+      for(const track of tracks)if(wanted.has(track.index)&&typeof track.url==='string'&&track.url){urls.set(track.index,track.url);if(!editorAudio.elements.has(track.index))createEditorAudioElement(track.index,track.url);}
+      if(missing.some(index=>!editorAudio.elements.has(index)))throw new Error('Seçili ses izleri hazırlanamadı.');
+    }catch(error){if(generation!==editorAudio.generation||editorAudio.clipId!==clip.id)return;editorAudio.error='Ses önizlemesi açılamadı: '+error.message;video.pause();}
+    finally{if(generation===editorAudio.generation&&editorAudio.clipId===clip.id){editorAudio.loading=false;syncEditorAudioControls(clip);syncEditorAudio(true);}}
+  }
+  function activateEditorAudio(clip=selected()){
+    if(!clip){releaseEditorAudio();renderEditorAudio(clip);return;}if(editorAudio.clipId!==clip.id){releaseEditorAudio();editorAudio.viewerMuted=video.muted;editorAudio.masterMuted=video.muted;editorAudio.clipId=clip.id;video.muted=true;renderEditorAudio(clip);}return refreshEditorAudio(clip);
+  }
+  function playerIsMuted(){return page==='editor'?editorAudio.masterMuted:video.muted;}
+  function setPlayerMuted(muted){
+    if(page==='editor'){editorAudio.masterMuted=Boolean(muted);video.muted=true;syncEditorAudio();}else video.muted=Boolean(muted);
+  }
+  function renderStartupOption(){
+    const input=$('sk-launch-minimized');input.disabled=!config.launch;input.checked=Boolean(config.launchMinimized);
+  }
+  function syncTrashSelection(){
+    const valid=new Set(trashEntries.map(entry=>entry.id));for(const id of trashSelectedIds)if(!valid.has(id))trashSelectedIds.delete(id);
+    const busy=trashLoading||trashRestoring,count=trashSelectedIds.size;
+    root.querySelectorAll('[data-trash-id]').forEach(row=>{const on=trashSelectedIds.has(row.dataset.trashId);row.dataset.selected=String(on);const check=row.querySelector('[role=checkbox]');if(check){check.setAttribute('aria-checked',String(on));check.disabled=busy;}for(const selector of ['.sk-trash-restore','.sk-trash-watch']){const button=row.querySelector(selector);if(button)button.disabled=busy;}});
+    $('sk-trash-selection-actions').hidden=!count;$('sk-trash-selection-count').textContent=count+' seçili';$('sk-trash-count').textContent=trashEntries.length+' klip';
+    $('sk-trash-restore-selected').disabled=busy||!count;$('sk-trash-restore-selected').setAttribute('aria-busy',String(trashRestoring));$('sk-trash-restore-label').textContent=trashRestoring?'Geri yükleniyor…':'Geri yükle';$('sk-trash-clear-selection').disabled=busy;$('sk-trash-refresh').disabled=busy;
+    $('sk-trash-list').setAttribute('aria-busy',String(busy));
+    $('sk-trash-preview-restore').disabled=busy||!trashPreviewId||!valid.has(trashPreviewId);
+  }
+  function toggleTrashSelection(id){
+    if(trashLoading||trashRestoring||!trashEntries.some(entry=>entry.id===id))return;
+    if(trashSelectedIds.has(id))trashSelectedIds.delete(id);else trashSelectedIds.add(id);syncTrashSelection();
+  }
+  async function refreshTrash(){
+    if(trashLoading||trashRestoring)return;trashLoading=true;trashError='';renderTrash();
+    try{if(!window.klip)throw new Error('Çöp Kutusu masaüstü uygulamasında kullanılabilir.');trashEntries=await window.klip.call('trash-list');}
+    catch(error){trashError='Çöp Kutusu yüklenemedi: '+error.message;}
+    finally{trashLoading=false;renderTrash();}
+  }
+  async function restoreTrash(requestedIds=[...trashSelectedIds]){
+    if(trashLoading||trashRestoring)return;const ids=[...new Set(requestedIds)].filter(id=>trashEntries.some(entry=>entry.id===id));if(!ids.length)return;
+    if(trashPreviewId)closeTrashPreview();
+    const beforeRestore=[...clips];trashRestoring=true;syncTrashSelection();
+    try{
+      if(!window.klip)throw new Error('Geri yükleme masaüstü uygulamasında kullanılabilir.');
+      const result=await window.klip.call('trash-restore',{ids});trashEntries=result.entries;
+      for(const item of result.restored)trashSelectedIds.delete(item.id);
+      if(Array.isArray(result.clips)){const merged=new Map(result.clips.map(clip=>[clip.id,clip]));for(const clip of [...clips,...beforeRestore])if(clip.game==='İçe aktarılanlar'&&!merged.has(clip.id))merged.set(clip.id,clip);clips=[...merged.values()];}
+      for(const clip of clips)if(clip.game&&!games.includes(clip.game))games.push(clip.game);renderClips();
+      const failures=result.failed||[],summary=failures.length?result.restored.length+' klip geri yüklendi; '+failures.length+' klip geri yüklenemedi. '+failures[0].error:result.restored.length+' klip geri yüklendi.';
+      const warnings=[result.refreshError,result.libraryError].filter(Boolean);notify(summary+(warnings.length?' Yenileme uyarısı: '+warnings.join(' · '):''));persist();
+    }catch(error){notify('Klipler geri yüklenemedi: '+error.message);}
+    finally{trashRestoring=false;renderTrash();}
+  }
+  function formatTrashSize(bytes){
+    let value=Number(bytes);if(!Number.isFinite(value)||value<0)return '—';const units=['B','KB','MB','GB','TB'];let index=0;while(value>=1024&&index<units.length-1){value/=1024;index++;}return value.toLocaleString('tr-TR',{maximumFractionDigits:value>=10?0:1})+' '+units[index];
+  }
+  function formatTrashDate(value){
+    const date=new Date(value);return value&&Number.isFinite(date.getTime())?date.toLocaleString('tr-TR',{dateStyle:'short',timeStyle:'short'}):'—';
+  }
+  function closeTrashPreview(){
+    trashPreviewGeneration++;trashPreviewId='';const media=$('sk-trash-preview-video');media.pause();media.removeAttribute('src');media.removeAttribute('poster');media.load();media.hidden=true;
+    const dialog=$('sk-trash-preview-dialog');if(dialog.open)dialog.close();$('sk-trash-preview-restore').disabled=true;
+  }
+  async function openTrashPreview(id){
+    if(page!=='trash'||trashLoading||trashRestoring)return;const entry=trashEntries.find(item=>item.id===id);if(!entry)return;
+    closeTrashPreview();const generation=trashPreviewGeneration;trashPreviewId=id;
+    const dialog=$('sk-trash-preview-dialog'),media=$('sk-trash-preview-video'),status=$('sk-trash-preview-status');
+    $('sk-trash-preview-title').textContent=entry.fileName||entry.name||'Silinmiş klip';$('sk-trash-preview-info').textContent='';status.hidden=false;status.textContent='Önizleme hazırlanıyor…';$('sk-trash-preview-restore').disabled=false;if(!dialog.open)dialog.showModal();
+    try{
+      if(!window.klip)throw new Error('Video önizlemesi masaüstü uygulamasında kullanılabilir.');
+      const preview=await window.klip.call('trash-preview',{id});
+      if(generation!==trashPreviewGeneration||trashPreviewId!==id||page!=='trash'||!dialog.open||trashRestoring)return;
+      if(preview.id!==id||!preview.videoUrl)throw new Error('Video önizlemesi alınamadı.');
+      media.src=preview.videoUrl;media.poster=preview.thumbnail||'';media.hidden=false;media.load();status.hidden=true;
+      $('sk-trash-preview-info').textContent=[Number.isFinite(preview.seconds)?time(preview.seconds):'',preview.resolution?.replace('x',' × '),Number.isFinite(preview.fps)?Number(preview.fps.toFixed(2))+' FPS':'',Number.isFinite(preview.tracks)?preview.tracks+' ses izi':''].filter(Boolean).join(' · ');
+      media.play()?.catch(()=>{if(generation===trashPreviewGeneration&&trashPreviewId===id){status.hidden=false;status.textContent='Videoyu başlatmak için oynat düğmesine bas.';}});
+    }catch(error){if(generation!==trashPreviewGeneration||trashPreviewId!==id||!dialog.open)return;status.hidden=false;status.textContent='Önizleme açılamadı: '+error.message+' Klibi yine de geri yükleyebilirsin.';}
+  }
+  function restoreTrashPreview(){
+    const id=trashPreviewId;if(id)return restoreTrash([id]);
+  }
+  function renderTrash(){
+    const list=$('sk-trash-list'),status=$('sk-trash-status');list.replaceChildren();
+    const message=trashLoading?'Çöp Kutusu yükleniyor…':trashError||(!trashEntries.length?'Çöp Kutusu’nda bu kayıt klasörüne ait klip yok.':'');status.hidden=!message;status.textContent=message;status.setAttribute('role',trashError?'alert':'status');list.hidden=Boolean(message);
+    if(!message)for(const entry of trashEntries){
+      const row=make('div','sk-trash-row');row.dataset.trashId=entry.id;row.dataset.selected=String(trashSelectedIds.has(entry.id));
+      const check=make('button','sk-select-check sk-trash-check cursor-interaction');check.type='button';check.setAttribute('role','checkbox');check.setAttribute('aria-label',(entry.fileName||entry.name)+' klibini geri yüklemek için seç');check.setAttribute('aria-checked',String(trashSelectedIds.has(entry.id)));check.append(icon('check'));check.addEventListener('click',()=>toggleTrashSelection(entry.id));
+      const watch=make('button','sk-trash-watch cursor-interaction');watch.type='button';watch.setAttribute('aria-label',(entry.fileName||entry.name)+' klibini izle');watch.setAttribute('title',entry.originalPath||'');watch.disabled=trashLoading||trashRestoring;watch.addEventListener('click',()=>openTrashPreview(entry.id));
+      const thumb=make('span','sk-trash-thumb');thumb.append(icon('film'));if(entry.thumbnail){const image=make('img');image.loading='lazy';image.decoding='async';image.alt='';image.draggable=false;image.src=entry.thumbnail;image.addEventListener('error',()=>image.hidden=true);thumb.append(image);}const play=make('span','sk-trash-play');play.setAttribute('aria-hidden','true');play.append(icon('play'));thumb.append(play);
+      const name=make('span','sk-trash-name');name.append(make('span','',entry.fileName||entry.name),make('small','',entry.game||'Klip'));watch.append(thumb,name);
+      const restore=make('button','sk-button sk-trash-restore cursor-interaction');restore.type='button';restore.setAttribute('aria-label',(entry.fileName||entry.name)+' klibini geri yükle');restore.append(icon('rotate-ccw'),make('span','','Geri yükle'));restore.addEventListener('click',()=>restoreTrash([entry.id]));
+      row.append(check,watch,make('span','sk-trash-size sk-muted',formatTrashSize(entry.size)),make('span','sk-trash-date sk-muted','Silinme: '+formatTrashDate(entry.deletedAt)),restore);list.append(row);
+    }
+    syncTrashSelection();decorate();
+  }
+  function renderAudio(){const list=$('sk-audio-list');list.replaceChildren();for(const track of [{track:1,name:'Birleşik ses'},...nativeAudio,{track:6,name:'Mikrofon'}]){const row=make('label','sk-audio-row'),input=make('input');input.type='checkbox';input.checked=config.audioEnabled?.[track.track]!==false;input.addEventListener('change',async()=>{try{config.audioEnabled=await window.klip.call('audio',{track:track.track,enabled:input.checked});lastGood={...config};lastNativeSettings=JSON.stringify(config);}catch(e){input.checked=!input.checked;notify(e.message);}});row.append(make('span','sk-audio-name',track.name),make('small','', 'İz '+track.track),input);list.append(row);}if(!nativeAudio.length)list.append(make('p','sk-setting-note','Uygulama izleri tampon başladığında burada görünür.'));}
+  function openClip(clip,destination,remember=true){
+    if(!clip)return;video.pause();releaseEditorAudio();releaseEditorTimeline();selectedId=clip.id;activeMediaId=clip.id;localFileName='';pendingTrim=null;mediaBounds={start:0,end:null};playStart=0;playEnd=clip.seconds;trimStart=0;trimEnd=clip.seconds;video.src=clip.videoUrl;video.poster=clip.thumbnail||'';video.load();
+    $('sk-viewer-title').textContent=clip.name;$('sk-editor-name').textContent=clip.name;$('sk-media-label').textContent=clip.fileName;$('sk-media-error').hidden=true;renderClips();showPage(destination,remember);
+  }
+  function renderPlayer(){
+    const ready=Number.isFinite(video.duration)&&video.duration>0,duration=Math.max(.1,playEnd-playStart);
+    $('sk-seek').max=duration;$('sk-seek').value=Math.max(0,(video.currentTime||0)-playStart);$('sk-seek').disabled=!ready;
+    $('sk-play-time').textContent=time(Math.max(0,video.currentTime-playStart))+' / '+time(duration);
+    $('sk-play').setAttribute('aria-label',video.paused?'Oynat':'Duraklat');$('sk-play').replaceChildren(icon(video.paused?'play':'pause'));
+    $('sk-play').disabled=!ready;$('sk-back-five').disabled=!ready;$('sk-forward-five').disabled=!ready;
+    $('sk-volume').value=playerIsMuted()?0:video.volume;$('sk-mute').setAttribute('aria-label',playerIsMuted()?'Sesi aç':'Sesi kapat');$('sk-mute').replaceChildren(icon(playerIsMuted()?'volume-x':'volume-2'));renderTrim();decorate();
+  }
+  function renderTrim(){const ready=Number.isFinite(video.duration)&&video.duration>0,duration=Math.max(.1,playEnd-playStart);for(const id of ['sk-trim-start','sk-trim-end']){$(id).min=playStart;$(id).max=playEnd;$(id).disabled=!ready;}$('sk-trim-start').value=trimStart;$('sk-trim-end').value=trimEnd;$('sk-trim-start-time').textContent=precise(trimStart-playStart);$('sk-trim-end-time').textContent=precise(trimEnd-playStart);$('sk-trim-duration').textContent=(trimEnd-trimStart).toFixed(1).replace('.',',')+' sn';$('sk-trim-selection').style.left=(trimStart-playStart)/duration*100+'%';$('sk-trim-selection').style.width=(trimEnd-trimStart)/duration*100+'%';$('sk-export').disabled=!ready;syncEditorTimelinePosition();}
+  function setStart(value){trimStart=Math.max(playStart,Math.min(trimEnd-.1,value));renderTrim();}
+  function setEnd(value){trimEnd=Math.max(trimStart+.1,Math.min(playEnd,value));renderTrim();}
+  function playPause(){if(video.paused){const first=page==='editor'?trimStart:playStart,last=page==='editor'?trimEnd:playEnd;if(video.currentTime<first||video.currentTime>=last)video.currentTime=first;video.play().catch(()=>notify('Video oynatılamadı. Başka bir video açabilirsin.'));}else video.pause();}
+  function prepareExport(){
+    const original=selected();if(!original)return;video.pause();$('sk-export-range').textContent=precise(trimStart)+' – '+precise(trimEnd)+' · '+(trimEnd-trimStart).toFixed(1)+' sn';$('sk-export-format').textContent=original.resolution.replace('x',' × ')+' · '+Number(original.fps.toFixed(2))+' FPS';$('sk-export-name').value=original.name+'-kesit.mp4';$('sk-export-folder').textContent=folderPath(original.game);
+    renderExportAudio(original);$('sk-export-dialog').showModal();
+  }
+  async function exportClip(){
+    const clip=selected(),button=$('sk-export-confirm');button.disabled=true;
+    try{const result=await window.klip.call('trim',{id:clip.id,start:trimStart,end:trimEnd,name:$('sk-export-name').value,tracks:selectedEditorAudioIndexes(clip),volumes:selectedEditorAudioVolumes(clip)});clips=result.clips;gameFolder=clip.game;selectedId=result.file;$('sk-export-dialog').close();renderClips();showPage('clips');notify('Kesit kaydedildi.');}catch(e){notify(e.message);}finally{button.disabled=false;}
+  }
+  function chime(){try{const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return;audioContext=audioContext||new Audio();audioContext.resume().catch(()=>{});[784,1046].forEach((frequency,index)=>{const oscillator=audioContext.createOscillator(),gain=audioContext.createGain(),start=audioContext.currentTime+index*.105;oscillator.frequency.value=frequency;gain.gain.setValueAtTime(0,start);gain.gain.linearRampToValueAtTime(.065,start+.012);gain.gain.exponentialRampToValueAtTime(.001,start+.16);oscillator.connect(gain);gain.connect(audioContext.destination);oscillator.start(start);oscillator.stop(start+.18);});}catch(_){}}
+  async function saveClip(){
+    if(saving||!running)return;saving=true;renderBuffer();try{clips=await window.klip.call('save');renderClips();notify('Klip kaydedildi.');if(config.sound)chime();}catch(e){notify(e.message);}finally{saving=false;renderBuffer();}
+  }
+  function setSettingsTab(next,remember=true){settingsTab=next;for(const name of ['capture','general','audio','updates']){$('sk-settings-'+name).hidden=name!==next;$('sk-settings-'+name+'-tab').setAttribute('aria-selected',String(name===next));}if(remember)persist();}
+  function restore(snapshot){
+    const data=snapshot?.modelContent;if(data?.app!=='Klip')return;
+    const incoming=data.settings||{};for(const key in defaults)if(typeof incoming[key]===typeof defaults[key])config[key]=incoming[key];
+    if(!['auto','game','screen'].includes(config.mode))config.mode='auto';if(![30,60,90,120,180,240,300].includes(config.duration))config.duration=120;if(!['1920x1080','2560x1440','1280x720'].includes(config.resolution))config.resolution='1920x1080';if(!['24','30','60','120','144','240','custom'].includes(config.fps))config.fps='60';config.customFps=Math.max(1,Math.min(1000,Math.round(config.customFps)||90));
+    if(data.audioSources)for(const key in audio)if(typeof data.audioSources[key]==='boolean')audio[key]=data.audioSources[key];
+    if(['sunset','sunset-organized'].includes(data.layout)){
+      const ui=snapshot.privateContent||{};view=data.view==='list'?'list':'grid';
+      if(Array.isArray(ui.clips)&&ui.clips.length){const valid=ui.clips.slice(0,48).filter(c=>typeof c.id==='string'&&typeof c.name==='string'&&Number.isFinite(c.seconds)&&Number.isFinite(c.thumb)&&typeof c.clock==='string'&&['today','yesterday'].includes(c.day)&&typeof c.resolution==='string'&&Number.isFinite(c.fps)&&Number.isFinite(c.tracks));if(valid.length)clips=valid;}
+      clips=clips.map(c=>({...c,game:gameFor(c),fileName:filenameFor(c)}));gameFolder=games.includes(data.gameFolder)?data.gameFolder:'all';
+      const nextId=clips.some(c=>c.id===ui.selectedId)?ui.selectedId:clips[0].id;
+      if(selectedId!==nextId&&!localUrl)openClip(clips.find(c=>c.id===nextId),'viewer',false);selectedId=nextId;
+      if(Number.isFinite(data.editor?.start)&&Number.isFinite(data.editor?.end)){pendingTrim={start:data.editor.start,end:data.editor.end};if(video.readyState>=1){trimStart=Math.max(playStart,Math.min(playEnd-.1,pendingTrim.start));trimEnd=Math.max(trimStart+.1,Math.min(playEnd,pendingTrim.end));pendingTrim=null;}}
+      setSettingsTab(['capture','audio','general','updates'].includes(ui.settingsTab)?ui.settingsTab:'capture',false);
+      showPage(['clips','capture','viewer','editor','settings','trash'].includes(ui.page)?ui.page:'clips',false);
+    }
+    renderConfig();renderClips();renderAudio();renderTrim();
+  }
+  root.querySelectorAll('[data-page]').forEach(el=>el.addEventListener('click',()=>{if(el.dataset.page==='editor'&&selected()&&(!video.getAttribute('src')||activeMediaId!==selected().id))openClip(selected(),'editor');else showPage(el.dataset.page);}));
+  root.querySelectorAll('[data-settings-tab]').forEach(el=>el.addEventListener('click',()=>setSettingsTab(el.dataset.settingsTab)));
+  $('sk-update-badge').addEventListener('click',openUpdateDialog);$('sk-update-now').addEventListener('click',acceptUpdateNow);$('sk-update-later').addEventListener('click',deferUpdateDialog);
+  $('sk-update-dialog').addEventListener('cancel',event=>{event.preventDefault();deferUpdateDialog();});$('sk-update-dialog').addEventListener('close',()=>{if(!$('sk-update-dialog').open&&updateUI.nowIntent)deferUpdateDialog();});
+  for(const action of ['check','download','install','login'])$('sk-update-'+action).addEventListener('click',()=>runUpdateAction(action));$('sk-update-login-code').addEventListener('focus',event=>event.target.select());
+  root.querySelectorAll('[role=tablist]').forEach(nav=>nav.addEventListener('keydown',event=>{const vertical=nav.getAttribute('aria-orientation')==='vertical',keys=vertical?['ArrowUp','ArrowDown','Home','End']:['ArrowLeft','ArrowRight','Home','End'];if(!keys.includes(event.key))return;const buttons=[...nav.querySelectorAll('[role=tab]')],current=buttons.indexOf(document.activeElement);if(current<0)return;event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(current+(['ArrowRight','ArrowDown'].includes(event.key)?1:-1)+buttons.length)%buttons.length;buttons[next].focus();buttons[next].click();}));
+  root.querySelectorAll('[data-setting]').forEach(el=>el.addEventListener('change',()=>{const key=el.dataset.setting;let value=el.type==='checkbox'?el.checked:el.value;if(['duration','customFps'].includes(key))value=Number(value);if(key==='customFps'&&(!Number.isInteger(value)||value<1||value>1000)){el.setCustomValidity('1 ile 1000 arasında tam sayı gir.');el.reportValidity();return;}el.setCustomValidity?.('');config[key]=value;renderConfig();persist();}));
+  $('sk-view-grid').addEventListener('click',()=>{view='grid';$('sk-library-body').scrollTop=0;renderClips();persist();});
+  $('sk-view-list').addEventListener('click',()=>{view='list';$('sk-library-body').scrollTop=0;renderClips();persist();});
+  $('sk-clear-selection').addEventListener('click',()=>{if(deleting)return;selectedIds.clear();syncLibrarySelection();});
+  $('sk-delete-selected').addEventListener('click',deleteSelection);$('sk-menu-delete').addEventListener('click',deleteSelection);
+  $('sk-trash-refresh').addEventListener('click',refreshTrash);$('sk-trash-restore-selected').addEventListener('click',()=>restoreTrash());
+  $('sk-trash-clear-selection').addEventListener('click',()=>{if(trashLoading||trashRestoring)return;trashSelectedIds.clear();syncTrashSelection();});
+  $('sk-trash-preview-close').addEventListener('click',closeTrashPreview);$('sk-trash-preview-restore').addEventListener('click',restoreTrashPreview);
+  $('sk-trash-preview-dialog').addEventListener('cancel',event=>{event.preventDefault();closeTrashPreview();});$('sk-trash-preview-dialog').addEventListener('close',()=>{if(!$('sk-trash-preview-dialog').open&&trashPreviewId)closeTrashPreview();});
+  $('sk-trash-preview-video').addEventListener('error',()=>{if(trashPreviewId&&$('sk-trash-preview-video').getAttribute('src')){const status=$('sk-trash-preview-status');status.hidden=false;status.textContent='Bu video oynatılamadı. Klibi yine de geri yükleyebilirsin.';}});
+  $('sk-trash-open').addEventListener('click',async()=>{const button=$('sk-trash-open');if(button.disabled)return;button.disabled=true;try{if(!window.klip)throw new Error('Windows Çöp Kutusu masaüstü uygulamasında açılabilir.');await window.klip.call('trash-open');}catch(error){notify(error.message);}finally{button.disabled=false;}});
+  $('sk-library-body').addEventListener('click',event=>{if(!deleting&&!event.target.closest('[data-clip-id]')){selectedIds.clear();syncLibrarySelection();}});
+  $('sk-library-body').addEventListener('scroll',()=>$('sk-clip-menu').hidePopover());
+  document.addEventListener('keydown',event=>{if(root.isConnected)handleLibraryKey(event);});
+  $('sk-clip-menu').addEventListener('keydown',event=>{if(!['ArrowDown','ArrowUp','Home','End'].includes(event.key))return;event.preventDefault();const buttons=[...$('sk-clip-menu').querySelectorAll('button:not(:disabled)')],current=buttons.indexOf(document.activeElement);const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(current+(event.key==='ArrowUp'?-1:1)+buttons.length)%buttons.length;buttons[next]?.focus();});
+  $('sk-buffer-toggle').addEventListener('click',async()=>{const button=$('sk-buffer-toggle');button.disabled=true;try{const result=await window.klip.call('toggle');running=result.running;if(!running)buffered=0;renderBuffer();}catch(e){notify(e.message);}finally{button.disabled=false;}});
+  $('sk-save').addEventListener('click',saveClip);
+  $('sk-hotkey').addEventListener('click',()=>{waitingKey=!waitingKey;renderConfig();});$('sk-test-sound').addEventListener('click',chime);
+  $('sk-viewer-back').addEventListener('click',()=>showPage('clips'));$('sk-edit-clip').addEventListener('click',()=>showPage('editor'));
+  $('sk-viewer-explorer').addEventListener('click',()=>showExplorer(selected()));
+  $('sk-menu-explorer').addEventListener('click',()=>{$('sk-clip-menu').hidePopover();if(menuClip)showExplorer(menuClip);});
+  $('sk-explorer-close').addEventListener('click',()=>$('sk-explorer-dialog').close());
+  $('sk-explorer-library').addEventListener('click',()=>{gameFolder=explorerGame;$('sk-explorer-dialog').close();renderClips();showPage('clips');});
+  $('sk-explorer-path').addEventListener('focus',event=>event.target.select());
+  for(const [id,destination]of [['sk-menu-watch','viewer'],['sk-menu-edit','editor']])$(id).addEventListener('click',()=>{$('sk-clip-menu').hidePopover();if(menuClip)openClip(menuClip,destination);});
+  $('sk-menu-details').addEventListener('click',()=>{$('sk-clip-menu').hidePopover();if(!menuClip)return;$('sk-details-title').textContent=menuClip.name;$('sk-details-text').textContent=time(menuClip.seconds)+' · '+menuClip.resolution.replace('x',' × ')+' · '+fpsLabel(menuClip)+' · '+menuClip.tracks+' ses izi';$('sk-details-dialog').showModal();});$('sk-details-close').addEventListener('click',()=>$('sk-details-dialog').close());
+  $('sk-play').addEventListener('click',playPause);video.addEventListener('click',playPause);
+  $('sk-editor-audio-retry').addEventListener('click',()=>{for(const entry of editorAudio.elements.values())releaseEditorAudioElement(entry);editorAudio.elements.clear();editorAudio.urls.delete(editorAudio.clipId);refreshEditorAudio();});
+  $('sk-timeline-track').addEventListener('click',seekEditorTimeline);for(const [id,edge]of [['sk-timeline-in','start'],['sk-timeline-out','end']]){$(id).addEventListener('pointerdown',event=>beginTimelineDrag(event,edge));$(id).addEventListener('pointermove',moveTimelineDrag);$(id).addEventListener('pointerup',endTimelineDrag);$(id).addEventListener('pointercancel',endTimelineDrag);$(id).addEventListener('keydown',event=>keyboardTimelineHandle(event,edge));}
+  video.addEventListener('timeupdate',syncEditorTimelinePosition);
+  for(const event of ['play','pause','seeking','seeked','ratechange','volumechange','timeupdate','ended','loadedmetadata'])video.addEventListener(event,()=>syncEditorAudio(['seeking','seeked','loadedmetadata'].includes(event)));
+  for(const event of ['waiting','stalled'])video.addEventListener(event,()=>{editorAudio.buffering=true;syncEditorAudio();});for(const event of ['canplay','playing'])video.addEventListener(event,()=>{editorAudio.buffering=false;syncEditorAudio(true);});
+  $('sk-back-five').addEventListener('click',()=>video.currentTime=Math.max(playStart,video.currentTime-5));$('sk-forward-five').addEventListener('click',()=>video.currentTime=Math.min(playEnd,video.currentTime+5));
+  $('sk-seek').addEventListener('input',event=>video.currentTime=playStart+Number(event.target.value));$('sk-mute').addEventListener('click',()=>{setPlayerMuted(!playerIsMuted());renderPlayer();});$('sk-volume').addEventListener('input',event=>{video.volume=Number(event.target.value);setPlayerMuted(false);renderPlayer();});
+  for(const event of ['loadedmetadata','play','pause','ended','volumechange'])video.addEventListener(event,renderPlayer);
+  video.addEventListener('timeupdate',()=>{$('sk-seek').value=Math.max(0,video.currentTime-playStart);$('sk-play-time').textContent=time(Math.max(0,video.currentTime-playStart))+' / '+time(playEnd-playStart);const stopAt=page==='editor'?trimEnd:playEnd;if(!video.paused&&video.currentTime>=stopAt-.02){video.pause();video.currentTime=stopAt;}});
+  video.addEventListener('loadedmetadata',()=>{playStart=Math.max(0,Math.min(video.duration-.1,mediaBounds.start));playEnd=Math.max(playStart+.1,Math.min(video.duration,mediaBounds.end??video.duration));trimStart=playStart;trimEnd=playEnd;if(pendingTrim){setStart(pendingTrim.start);setEnd(pendingTrim.end);pendingTrim=null;}video.currentTime=playStart;renderPlayer();});video.addEventListener('error',()=>{$('sk-media-error').hidden=false;renderPlayer();});video.addEventListener('loadeddata',()=>{$('sk-media-error').hidden=true;});
+  $('sk-open-video').addEventListener('click',async()=>{try{const clip=await window.klip.call('import');if(!clip)return;if(!clips.some(c=>c.id===clip.id))clips.unshift(clip);if(!games.includes(clip.game))games.push(clip.game);openClip(clip,page==='editor'?'editor':'viewer');}catch(e){notify(e.message);}});
+  $('sk-trim-start').addEventListener('input',event=>{video.pause();setStart(Number(event.target.value));video.currentTime=trimStart;});$('sk-trim-end').addEventListener('input',event=>{video.pause();setEnd(Number(event.target.value));video.currentTime=trimEnd;});for(const id of ['sk-trim-start','sk-trim-end'])$(id).addEventListener('change',persist);
+  $('sk-mark-in').addEventListener('click',()=>{setStart(video.currentTime);persist();});$('sk-mark-out').addEventListener('click',()=>{setEnd(video.currentTime);persist();});
+  $('sk-export').addEventListener('click',prepareExport);$('sk-export-cancel').addEventListener('click',()=>$('sk-export-dialog').close());$('sk-export-confirm').addEventListener('click',exportClip);
+  root.addEventListener('keydown',event=>{if(event.repeat||['Control','Alt','Shift','Meta'].includes(event.key))return;const key=event.key===' '?'Space':event.key.length===1?event.key.toUpperCase():event.key,combo=[event.ctrlKey?'Ctrl':'',event.altKey?'Alt':'',event.shiftKey?'Shift':'',event.metaKey?'Meta':'',key].filter(Boolean).join('+');if(waitingKey){event.preventDefault();if(event.key!=='Escape')config.hotkey=combo;waitingKey=false;renderConfig();persist();return;}const editing=['INPUT','SELECT','TEXTAREA'].includes(event.target.tagName);if((!editing||/^F\d{1,2}$/.test(event.key))&&false&&combo===config.hotkey){event.preventDefault();saveClip();return;}if(page==='editor'&&!editing&&!event.ctrlKey&&!event.metaKey&&!event.altKey){if(key==='I'){event.preventDefault();setStart(video.currentTime);persist();}if(key==='O'){event.preventDefault();setEnd(video.currentTime);persist();}}});
+  window.addEventListener('openai:set_globals',event=>{const snapshot=event.detail?.globals?.widgetState;if(snapshot&&JSON.stringify(snapshot)!==lastSaved)restore(snapshot);});
+  window.addEventListener('pagehide',()=>{video.pause();releaseEditorAudio();releaseEditorTimeline();closeTrashPreview();i18n?.disconnect();for(const url of localUrls)URL.revokeObjectURL(url);});
+  video.volume=.7;video.poster=assets.poster;video.src=assets.video;$('sk-viewer-title').textContent=selected()?.name||'Klip izleme';$('sk-editor-name').textContent=selected()?.name||'Klip izleme';
+  setSettingsTab('capture',false);renderConfig();renderClips();renderAudio();renderPlayer();renderUpdateUI();showPage('clips',false);
+  
+  try{const ui=JSON.parse(localStorage.getItem('klip-ui')||'{}');view=ui.view==='list'?'list':'grid';gameFolder=games.includes(ui.gameFolder)?ui.gameFolder:'all';renderClips();}catch{}
+  const chrome=root.querySelector('.sk-chrome');chrome.removeAttribute('aria-hidden');chrome.replaceChildren();for(const [action,glyph,label]of [['minimize','minus','Küçült'],['maximize','square','Büyüt'],['close','x','Pencereyi kapat']]){const b=make('button','sk-icon-button');b.setAttribute('aria-label',label);b.append(icon(glyph));b.addEventListener('click',()=>window.klip.call('window',action));chrome.append(b);}decorate();
+  window.klip.onState(s=>{if(typeof s.running==='boolean')running=s.running;if(typeof s.buffered==='number')buffered=s.buffered;if(s.clips){clips=s.clips;for(const c of clips)if(!games.includes(c.game))games.push(c.game);renderClips();}if(s.audio){nativeAudio=s.audio;renderAudio();}if(s.update)receiveUpdateState(s.update);if(s.message)notify(s.message);if(s.saved&&config.sound)chime();renderBuffer();});
+  window.klip.call('update-state').then(state=>receiveUpdateState(state)).catch(()=>{});
+  document.documentElement.dataset.nativeReady='true';
+  window.klip.call('library').then(list=>{clips=list;for(const c of clips)if(!games.includes(c.game))games.push(c.game);renderClips();}).catch(e=>notify(e.message));
+
+  if(globalThis.ResizeObserver){const dockObserver=new ResizeObserver(()=>{const dock=root.querySelector('.sk-dock');root.style.setProperty('--sk-toast-top',(dock.offsetTop+dock.offsetHeight+12)+'px');});dockObserver.observe(root.querySelector('.sk-dock'));window.addEventListener('pagehide',()=>dockObserver.disconnect(),{once:true});}
+})();
+</script>
+</body></html>

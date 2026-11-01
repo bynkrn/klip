@@ -1,0 +1,4 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path');
+const {safeName,unique,scan}=require('../src/files');
+test('Windows folder names cannot escape clip root',()=>{for(const name of ['../x','a/b','a\\b','C:\\x','..']){const safe=safeName(name);assert(!/[<>:"/\\|?*]/.test(safe));assert(!safe.endsWith('.'));}});
+test('Existing clips are preserved and game folders scanned',async()=>{const root=await fs.mkdtemp(path.join(os.tmpdir(),'klip-files-'));try{const game=path.join(root,'Valorant');await fs.mkdir(game);const original=path.join(game,'clip.mp4');await fs.writeFile(original,'original');assert.equal(await unique(original),path.join(game,'clip (2).mp4'));const clips=await scan(root);assert.equal(clips[0].game,'Valorant');assert.equal(await fs.readFile(original,'utf8'),'original');}finally{await fs.rm(root,{recursive:true,force:true});}});

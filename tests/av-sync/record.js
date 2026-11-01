@@ -1,0 +1,20 @@
+const {spawn}=require('node:child_process'),fs=require('node:fs/promises'),path=require('node:path'),assert=require('node:assert/strict');
+const {Capture}=require('../../src/capture');
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function main(){
+ const duration=Number(process.env.AV_SYNC_SECONDS)||130,run=path.join(__dirname,'artifacts',new Date().toISOString().replace(/[:.]/g,'-'));await fs.mkdir(run,{recursive:true});
+ const probe=spawn(path.join(__dirname,'KlipAvSyncProbe.exe'),[],{windowsHide:true,stdio:['ignore','pipe','pipe']});let text='',stderr='',tail='',readyResolve,readyReject;const ready=new Promise((resolve,reject)=>{readyResolve=resolve;readyReject=reject;});
+ probe.stdout.setEncoding('utf8');probe.stdout.on('data',data=>{text+=data;tail+=data;let end;while((end=tail.indexOf('\n'))>=0){const line=tail.slice(0,end);tail=tail.slice(end+1);try{const event=JSON.parse(line);if(event.event==='ready')readyResolve(event);if(event.event==='error')readyReject(new Error(event.message));}catch{}}});probe.stderr.on('data',data=>stderr=(stderr+data).slice(-4000));probe.on('error',readyReject);
+ const capture=new Capture(path.resolve(__dirname,'../../engine/obs'));capture.on('warning',message=>console.log('WARNING',message));
+ let file,reader,readerText='',readerError='';try{
+  const info=await Promise.race([ready,new Promise((_,reject)=>setTimeout(()=>reject(new Error('AV probe startup timeout')),10000))]);console.log('PROBE',JSON.stringify(info));
+  if(process.env.AV_SYNC_PACKET_REFERENCE==='1'){reader=spawn(path.join(__dirname,'KlipAvClockReader.exe'),[String(probe.pid)],{windowsHide:true,stdio:['ignore','pipe','pipe']});reader.stdout.on('data',data=>readerText+=data);reader.stderr.on('data',data=>readerError+=data);}
+  await capture.start({resolution:'1920x1080',fps:'60',customFps:90,duration:180,mode:'screen',stretch:true,cursor:false,targetExe:'KlipAvSyncProbe.exe',autoAudio:true,audioEnabled:{1:process.env.AV_SYNC_SYSTEM==='1',3:false,4:false,5:false,6:false}},run);
+  let screen;for(let i=0;i<30;i++){screen=(await capture.obs.call('GetSceneItemTransform',{sceneName:'Klip',sceneItemId:capture.displayId})).sceneItemTransform;if(screen.sourceWidth>0&&screen.sourceHeight>0)break;await wait(200);}assert(screen.sourceWidth>0&&screen.sourceHeight>0,'Actual desktop capture is producing a nonzero source texture');
+  assert(capture.audio.some(a=>a.track===2&&a.exe==='KlipAvSyncProbe.exe'),'Probe is assigned to isolated track 2');
+  let calibration=null;if(process.env.AV_SYNC_CALIBRATION_RUN){const evidence=path.resolve(process.env.AV_SYNC_CALIBRATION_RUN,'raw-packet-clock-report.json');const measured=JSON.parse(await fs.readFile(evidence,'utf8'));calibration={evidence,processOffsetMs:-measured.medianPacketToneMinusRenderClockMs};await capture.obs.call('SetInputAudioSyncOffset',{inputName:'Klip Ses 2',inputAudioSyncOffset:calibration.processOffsetMs});assert(Math.abs((await capture.obs.call('GetInputAudioSyncOffset',{inputName:'Klip Ses 2'})).inputAudioSyncOffset-calibration.processOffsetMs)<.000001);console.log('CALIBRATION',JSON.stringify(calibration));}
+  const started=Date.now();console.log('RECORDING',run);for(let elapsed=0;elapsed<duration;elapsed+=10){await wait(Math.min(10,duration-elapsed)*1000);console.log('PROGRESS',Math.min(elapsed+10,duration));}
+  file=await capture.save();await fs.writeFile(path.join(run,'recording.json'),JSON.stringify({file,durationSeconds:(Date.now()-started)/1000,probe:info,audio:capture.audio,calibration,started:new Date(started).toISOString()},null,2));console.log('SAVED',file);
+ }finally{await fs.writeFile(path.join(run,'engine-log.txt'),capture.obs.session?.stderr||'');await capture.stop();probe.kill();reader?.kill();await fs.writeFile(path.join(run,'probe.jsonl'),text);await fs.writeFile(path.join(run,'probe-stderr.txt'),stderr);if(reader){await fs.writeFile(path.join(run,'reference-packets.jsonl'),readerText);await fs.writeFile(path.join(run,'reference-stderr.txt'),readerError);}await fs.writeFile(path.join(__dirname,'latest-run.txt'),run);}
+}
+main().catch(error=>{console.error(error);process.exitCode=1;});

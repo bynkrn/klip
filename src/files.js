@@ -1,0 +1,5 @@
+const fs=require('node:fs/promises'),path=require('node:path');
+function safeName(s){return String(s||'Masaüstü').replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').replace(/[. ]+$/,'').slice(0,100)||'Masaüstü';}
+async function unique(file){const p=path.parse(file);let result=file,n=2;while(await fs.stat(result).then(()=>true,()=>false))result=path.join(p.dir,`${p.name} (${n++})${p.ext}`);return result;}
+async function scan(root){const out=[];async function walk(dir,depth){if(depth>3)return;for(const e of await fs.readdir(dir,{withFileTypes:true}).catch(()=>[])){const file=path.join(dir,e.name);if(e.isDirectory())await walk(file,depth+1);else if(/\.(mp4|mkv|mov|webm)$/i.test(e.name)&&!e.name.startsWith('.')){const st=await fs.stat(file);out.push({id:file,name:path.parse(e.name).name,fileName:e.name,file,game:path.relative(root,path.dirname(file)).split(path.sep)[0]||'Masaüstü',mtime:st.mtimeMs,size:st.size});}}}await walk(root,0);return out.sort((a,b)=>b.mtime-a.mtime);}
+module.exports={safeName,unique,scan};
