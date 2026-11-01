@@ -11,7 +11,7 @@ User wants per-application editor audio switches reflected in exports, no OBS ap
 - [x] Add large preview, right audio inspector, real 12-frame filmstrip, ruler, playhead, click seeking, pointer/keyboard trim handles, and TR/EN without changing user filenames.
 - [x] Verify actual frequencies, playback/pause/seek, excluded Discord, a 0.35 preview volume from 0.7 × 0.5, approximately 0.5 exported amplitude, and a 2.8-second cut in the isolated native fixture.
 - [x] Verify 1280×800 and 850×650 layout, reachable controls, no horizontal overflow, proportional flush title controls, and themed focus.
-- [ ] Parent completes the final personal-runtime replacement/reopen and source upload; this is separate from the completed isolated native checks.
+- [x] Replaced and reopened the personal v0.4.0 runtime, verified packaged capture and native F8 save/playback, and uploaded source to the private repository.
 
 ## Capture Decision And Evidence
 

@@ -25,7 +25,7 @@
 - [x] Add the title-bar badge, startup Now/Later offer, progress, Settings check/download/apply and device-code login. Later invalidates pending auto-install intent; manual download never installs.
 - [x] Integrate main IPC/lifecycle, replay preservation, pinned public key/repository, version/build configuration and future release workflow tooling.
 - [x] Verify signed metadata, corrupted archives, unsafe paths, immutable install handoff, actual staging/health acknowledgement and rollback in disposable dummy application folders.
-- [ ] Parent finishes the current local-runtime smoke/reopen and final source upload. Do not substitute isolated fixtures for a completed live private-Release upgrade.
+- [x] Completed local packaged-runtime smoke/reopen and private source upload. The live private-Release upgrade remains unperformed because no Release/distribution is authorized.
 
 No distribution Release or version tag was published. Future Release creation is a separate explicit action; source commits alone do not produce an installable update. AppData, credentials, signing private keys, runtime binaries and personal/test media are excluded from source.
 
