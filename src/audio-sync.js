@@ -4,5 +4,5 @@ function resolveAudioSync(profile,device){
  for(const key of ['systemOffsetMs','processOffsetMs'])if(typeof profile[key]!=='number'||!Number.isFinite(profile[key])||Math.abs(profile[key])>2000)return none;
  return{matched:true,systemOffsetMs:profile.systemOffsetMs,processOffsetMs:profile.processOffsetMs};
 }
-function inputSyncOffset(kind,offsets){return kind==='wasapi_output_capture'?offsets.systemOffsetMs:kind==='wasapi_process_output_capture'?offsets.processOffsetMs:0;}
+function inputSyncOffset(kind,offsets){return kind==='wasapi_output_capture'?offsets.systemOffsetMs:kind==='wasapi_process_output_capture'||kind==='ember_system_audio_capture'?offsets.processOffsetMs:0;}
 module.exports={resolveAudioSync,inputSyncOffset};

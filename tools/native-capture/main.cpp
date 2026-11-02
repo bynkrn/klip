@@ -32,6 +32,7 @@ using namespace std::chrono_literals;
 static std::mutex wireMutex;
 static void send(const json &message){std::lock_guard<std::mutex> lock(wireMutex);std::cout<<message.dump(-1,' ',false,json::error_handler_t::replace)<<'\n'<<std::flush;}
 static void event(const char *name,json data=json::object()){send({{"event",name},{"data",std::move(data)}});}
+#include "process-audio-exclusion.hpp"
 static void logMessage(int level,const char *format,va_list args,void*){if(level>(std::getenv("KLIP_CAPTURE_DEBUG")?LOG_DEBUG:LOG_INFO))return;char text[8192];vsnprintf(text,sizeof(text),format,args);fprintf(stderr,"%s\n",text);fflush(stderr);}
 struct Data{obs_data_t *p;explicit Data(const json &value=json::object()):p(obs_data_create_from_json(value.dump().c_str())){if(!p)throw std::runtime_error("Invalid settings JSON");}~Data(){obs_data_release(p);}operator obs_data_t*()const{return p;}Data(const Data&)=delete;};
 static std::string value(const char *text){return text?text:"";}
@@ -133,7 +134,7 @@ public:
   auto resolution=config.value("resolution",std::string("1920x1080"));auto split=resolution.find('x');require(split!=std::string::npos,"Invalid resolution");
   unsigned fps=config.value("fps",std::string("60"))=="custom"?config.value("customFps",90):std::stoul(config.value("fps",std::string("60")));
   videoSettings({{"baseWidth",std::stoul(resolution.substr(0,split))},{"baseHeight",std::stoul(resolution.substr(split+1))},{"fpsNumerator",fps}});
-  for(auto name:{"win-capture","win-wasapi","obs-nvenc","obs-ffmpeg"})loadModule(name);obs_post_load_modules();
+  for(auto name:{"win-capture","win-wasapi","obs-nvenc","obs-ffmpeg"})loadModule(name);ember_audio::registerSource();obs_post_load_modules();
  }
  void shutdown(){
   if(!initialized)return;stopOutput();
@@ -154,9 +155,12 @@ public:
   if(type=="GetInputList"){json list=json::array();for(auto &entry:inputs)list.push_back({{"inputName",entry.first},{"inputKind",obs_source_get_id(entry.second)}});return{{"inputs",list}};}
   if(type=="CreateInput"){
    auto name=data.at("inputName").get<std::string>(),kind=data.at("inputKind").get<std::string>();require(!inputs.count(name),"Input already exists");
-   auto actualSettings=data.value("inputSettings",json::object()),initialSettings=actualSettings;double initialOffset=data.value("inputAudioSyncOffset",0.0);require(std::isfinite(initialOffset)&&initialOffset>=-2000&&initialOffset<=2000,"Invalid initial audio sync offset");bool staged=initialOffset!=0;
+   auto actualSettings=data.value("inputSettings",json::object());double initialOffset=data.value("inputAudioSyncOffset",0.0);require(std::isfinite(initialOffset)&&initialOffset>=-2000&&initialOffset<=2000,"Invalid initial audio sync offset");
+   if(kind=="ember_system_audio_capture")actualSettings["__ember_initial_sync_offset_ns"]=(int64_t)std::llround(initialOffset*1000000.0);
+   auto initialSettings=actualSettings;bool staged=initialOffset!=0&&kind!="ember_system_audio_capture";
    if(staged){require(kind=="wasapi_output_capture"||kind=="wasapi_process_output_capture","Initial calibration is supported only for output audio capture");if(kind=="wasapi_output_capture")initialSettings["device_id"]="__klip_unbound_audio_endpoint__";else initialSettings["window"]="";}
-   Data settings(initialSettings);auto source=obs_source_create(kind.c_str(),name.c_str(),settings,nullptr);require(source!=nullptr,"Cannot create input: "+kind);
+   Data settings(initialSettings);if(kind=="ember_system_audio_capture")ember_audio::creationError.clear();auto source=obs_source_create(kind.c_str(),name.c_str(),settings,nullptr);require(source!=nullptr,"Cannot create input: "+kind);
+   if(kind=="ember_system_audio_capture"&&!ember_audio::creationError.empty()){auto error=ember_audio::creationError;obs_source_release(source);throw std::runtime_error("Cannot create Ember audio exclusion: "+error);}
    if(staged){obs_source_set_sync_offset(source,(int64_t)std::llround(initialOffset*1000000.0));Data actual(actualSettings);obs_source_update(source,actual);}
    auto added=obs_scene_add(scene(data),source);if(!added){obs_source_release(source);throw std::runtime_error("Cannot add source to scene");}inputs[name]=source;
    obs_sceneitem_set_scale_filter(added,OBS_SCALE_LANCZOS);

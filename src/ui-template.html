@@ -1,4 +1,6 @@
 <style>
+@font-face{font-family:EmberRounded;src:url("fonts/Nunito-Variable.ttf") format("truetype");font-weight:200 1000;font-display:swap}
+
 #sunset-klip-organized {
   --sk-bg:#19171d;--sk-panel:#211d25;--sk-raised:#2a252e;--sk-line:#353039;--sk-text:#f4efeb;--sk-muted:#b9afb6;--sk-amber:#ffb32e;--sk-orange:#ff873d;--sk-ink:#241800;--sk-soft:#ffb32e14;
   color-scheme:dark;font-family:Inter,"Segoe UI",Arial,sans-serif;font-size:14px;line-height:1.45;color:var(--sk-text);background:var(--sk-bg);width:100%;max-width:1920px;height:clamp(800px,56.25vw,1080px);margin:0 auto;display:grid;grid-template-rows:56px auto minmax(0,1fr);overflow:hidden;position:relative;border:1px solid var(--sk-line);border-radius:8px;
@@ -264,7 +266,7 @@
 /* Compact desktop shell: one capture row and an icon navigation rail. */
 #sunset-klip-organized{--sk-rail-width:60px;grid-template-columns:60px minmax(0,1fr);grid-template-rows:40px 64px minmax(0,1fr)}
 #sunset-klip-organized .sk-topbar{grid-column:1/-1;grid-row:1;padding:0 20px;gap:0}
-#sunset-klip-organized .sk-brand{font-size:22px;gap:7px}
+#sunset-klip-organized .sk-brand{font-size:23px;gap:7px;font-family:EmberRounded,"Segoe UI",sans-serif;font-weight:650;letter-spacing:-.65px}
 #sunset-klip-organized .sk-sidebar{grid-column:1;grid-row:2/-1;background:var(--sk-panel);border-right:1px solid var(--sk-line);min-height:0}
 #sunset-klip-organized .sk-sidebar .sk-nav{height:100%;display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px 8px}
 #sunset-klip-organized .sk-sidebar .sk-nav button{position:relative;display:grid;place-items:center;flex:none;width:42px;height:42px;padding:0;border-radius:7px;background:transparent;color:var(--sk-muted)}
@@ -446,7 +448,7 @@
           <section class="sk-setting-section"><h2>Kaynak ve tampon</h2><label class="sk-field"><span>Kayıt modu</span><select data-setting="mode" aria-label="Kayıt ayarları modu"><option value="screen">Yalnız ekran</option><option value="game">Yalnız oyun</option><option value="auto">Ekran + oyun</option></select></label><p class="sk-mode-note" id="sk-mode-note"></p><label class="sk-field"><span>Replay buffer süresi</span><select data-setting="duration" aria-label="Replay buffer süresi"><option value="30">30 saniye</option><option value="60">1 dakika</option><option value="90">1 dakika 30 saniye</option><option value="120">2 dakika</option><option value="180">3 dakika</option><option value="240">4 dakika</option><option value="300">5 dakika</option></select></label><label class="sk-field"><span>Geçici tampon</span><select data-setting="storage"><option value="disk">Disk tamponu</option><option value="ram">Bellek tamponu</option></select></label></section>
           <section class="sk-setting-section"><h2>Görüntü kalitesi</h2><div class="sk-field-pair"><label class="sk-field"><span>Çözünürlük</span><select data-setting="resolution"><option value="1920x1080">1920 × 1080</option><option value="2560x1440">2560 × 1440</option><option value="1280x720">1280 × 720</option></select></label><label class="sk-field"><span>FPS</span><select data-setting="fps"><option value="24">24 FPS</option><option value="30">30 FPS</option><option value="60">60 FPS</option><option value="120">120 FPS</option><option value="144">144 FPS</option><option value="240">240 FPS</option><option value="custom">Özel FPS</option></select></label></div><label class="sk-field" data-custom-fps hidden><span>Özel FPS sayısı</span><input type="number" min="1" max="360" step="1" data-setting="customFps" aria-label="Kayıt ayarları özel FPS"></label><label class="sk-field"><span>Kalite</span><select data-setting="qualityMode" aria-label="Kayıt kalitesi"><option value="quality">En yüksek kalite</option><option value="bitrate">Özel bitrate</option></select></label><div class="sk-field-pair sk-bitrate-controls"><label class="sk-field"><span>Bitrate önayarı</span><select id="sk-bitrate-preset" aria-label="Bitrate önayarı" disabled><option value="30">30 Mbps</option><option value="45">45 Mbps</option><option value="60">60 Mbps</option><option value="80">80 Mbps</option><option value="100">100 Mbps</option><option value="custom">Özel</option></select></label><label class="sk-field"><span>Video bitrate (Mbps)</span><input type="number" min="5" max="250" step="1" data-setting="videoBitrate" aria-label="Video bitrate (Mbps)" aria-describedby="sk-quality-note" disabled></label></div><p class="sk-setting-note" id="sk-quality-note"></p><p class="sk-setting-note" id="sk-bitrate-memory" hidden><span>Tahmini tampon belleği</span>: <strong id="sk-bitrate-memory-value"></strong> GB</p><label class="sk-field"><span>Video kodlayıcı</span><select data-setting="codec"><option value="h264">H.264 · Yaygın uyumluluk</option><option value="h265">HEVC / H.265</option><option value="av1">AV1</option></select></label><label class="sk-check"><input type="checkbox" data-setting="stretch"><span>4:3 görüntüyü ekrana esnet<small>Seçili çıkış çözünürlüğünü doldurur; siyah kenar bırakmaz.</small></span></label></section>
           <section class="sk-setting-section"><h2>Geçiş ve görünüm</h2><label class="sk-check"><input type="checkbox" data-setting="holdFrame"><span>Kaynak kesilirse son kareyi koru<small>Oyun geçici olarak görüntü vermediğinde geçişi korumak için.</small></span></label><label class="sk-check"><input type="checkbox" data-setting="cursor"><span>İmleci göster</span></label><p class="sk-setting-note">Yalnız oyun modunda Alt+Tab masaüstüne geçmez. Ekran + oyun modunda geçişler aynı klip içinde gösterilir.</p></section>
-          <section class="sk-setting-section"><h2>Kısayol ve bildirim</h2><div class="sk-hotkey"><span>Klibi kaydet</span><button type="button" class="sk-button" id="sk-hotkey">F8</button></div><p class="sk-setting-note" id="sk-hotkey-note">Değiştirmek için tuşa tıkla ve yeni kısayolunu bas.</p><label class="sk-check"><input type="checkbox" data-setting="sound"><span>Klip alındığında ses çal</span></label><button type="button" class="sk-button sk-ghost" id="sk-test-sound"><i data-lucide="volume-2" aria-hidden="true"></i>Sesi dene</button></section>
+          <section class="sk-setting-section"><h2>Kısayol ve bildirim</h2><div class="sk-hotkey"><span>Klibi kaydet</span><button type="button" class="sk-button" id="sk-hotkey">F8</button></div><p class="sk-setting-note" id="sk-hotkey-note">Değiştirmek için tuşa tıkla ve yeni kısayolunu bas.</p><label class="sk-check"><input type="checkbox" data-setting="sound"><span>Klip alındığında ses çal</span></label><label class="sk-field"><span>Bildirim sesi</span><select data-setting="notificationSound" aria-label="Bildirim sesi"><option value="ember">Kıvılcım</option><option value="soft">Yumuşak</option><option value="glass">Cam</option><option value="arcade">Arcade</option></select></label><label class="sk-field"><span style="display:flex;justify-content:space-between">Bildirim ses düzeyi <output id="sk-notification-volume-value">75%</output></span><input type="range" min="0" max="100" step="1" data-setting="notificationVolume" aria-label="Bildirim ses düzeyi"></label><p class="sk-setting-note">Bildirim sesi kaydedilen uygulama seslerinden ayrı tutulur.</p><button type="button" class="sk-button sk-ghost" id="sk-test-sound"><i data-lucide="volume-2" aria-hidden="true"></i>Sesi dene</button></section>
         </div>
       </div>
     </section>
@@ -470,7 +472,7 @@
   const $=id=>document.getElementById(id);
   const assets=JSON.parse($('sk-assets').textContent);
   const video=$('sk-video'), player=$('sk-player');
-  const defaults={mode:'auto',duration:120,resolution:'1920x1080',fps:'60',customFps:90,qualityMode:'quality',videoBitrate:60,codec:'h264',storage:'disk',stretch:true,holdFrame:true,cursor:true,hotkey:'F8',sound:true,launch:true,launchMinimized:false,language:'tr',autoBuffer:true,autoAudio:true,folder:'Videolar\\Ember'};
+  const defaults={mode:'auto',duration:120,resolution:'1920x1080',fps:'60',customFps:90,qualityMode:'quality',videoBitrate:60,codec:'h264',storage:'disk',stretch:true,holdFrame:true,cursor:true,hotkey:'F8',sound:true,notificationVolume:75,notificationSound:'ember',launch:true,launchMinimized:false,language:'tr',autoBuffer:true,autoAudio:true,folder:'Videolar\\Ember'};
   let config={...defaults};
   const i18n=window.KlipI18n?.install(root,config.language||'tr');
   const audioSources=[['mix','Birleşik ses','audio-lines'],['game','Oyun','gamepad-2'],['discord','Discord','headphones'],['browser','Tarayıcı','globe'],['music','Müzik','music-2'],['mic','Mikrofon','mic'],['other','Yeni uygulamaları otomatik ekle','plus']];
@@ -548,7 +550,7 @@
   }
   function changeSetting(el){
     const key=el.dataset.setting;let value=el.type==='checkbox'?el.checked:el.value;
-    if(['duration','customFps','videoBitrate'].includes(key))value=Number(value);
+    if(['duration','customFps','videoBitrate','notificationVolume'].includes(key))value=Number(value);
     const error=key==='customFps'&&(!Number.isInteger(value)||value<1||value>1000)?'1 ile 360 arasında tam sayı gir.':key==='videoBitrate'&&(!Number.isInteger(value)||value<5||value>250)?'5 ile 250 arasında tam sayı gir.':'';
     el.setCustomValidity?.(error?window.KlipI18n?.translate(error,config.language)||error:'');if(error){el.reportValidity();return;}
     config[key]=value;renderConfig();persist();
@@ -556,7 +558,7 @@
   function renderConfig(){
     i18n?.setLanguage(config.language||'tr');
     root.querySelectorAll('[data-setting]').forEach(el=>{const value=config[el.dataset.setting];if(el.type==='checkbox')el.checked=value;else el.value=String(value);});
-    renderStartupOption();renderQualityControls();
+    renderStartupOption();renderQualityControls();$('sk-notification-volume-value').textContent=config.notificationVolume+'%';
     root.querySelectorAll('[data-custom-fps]').forEach(el=>el.hidden=config.fps!=='custom');
     const descriptions={screen:'Seçili ekranı kaydeder.',game:'Oyun penceresini izler. Alt+Tab yaptığında masaüstü kayda girmez.',auto:'Oyundayken oyun, masaüstüne geçtiğinde ekran. Her iki kaynak tek klipte birleşir.'};
     $('sk-mode-note').textContent=descriptions[config.mode];
@@ -996,7 +998,15 @@
     clipMedia.set(clip.id,video.src);clips.unshift(clip);gameFolder=clip.game;$('sk-export-dialog').close();
     openClip(clip,'clips',false);notify('Örnek kesit '+clip.game+' klasörüne eklendi. Prototip diske dosya yazmaz.');persist();
   }
-  function chime(){try{const Audio=window.AudioContext||window.webkitAudioContext;if(!Audio)return;audioContext=audioContext||new Audio();audioContext.resume().catch(()=>{});[784,1046].forEach((frequency,index)=>{const oscillator=audioContext.createOscillator(),gain=audioContext.createGain(),start=audioContext.currentTime+index*.105;oscillator.frequency.value=frequency;gain.gain.setValueAtTime(0,start);gain.gain.linearRampToValueAtTime(.065,start+.012);gain.gain.exponentialRampToValueAtTime(.001,start+.16);oscillator.connect(gain);gain.connect(audioContext.destination);oscillator.start(start);oscillator.stop(start+.18);});}catch(_){}}
+  function chime(){
+    try{
+      chime.player?.pause();
+      const volume=Number.isInteger(config.notificationVolume)?Math.max(0,Math.min(100,config.notificationVolume)):75;if(!volume)return;
+      const sound=['ember','soft','glass','arcade'].includes(config.notificationSound)?config.notificationSound:'ember';
+      const player=new window.Audio('sounds/'+sound+'.wav');player.volume=volume/100;chime.player=player;
+      const played=player.play();if(played?.catch)played.catch(()=>{});
+    }catch(_){}
+  }
   function saveClip(){
     if(!running||buffered<1||saving)return;
     saving=true;if(config.sound){try{const Audio=window.AudioContext||window.webkitAudioContext;if(Audio){audioContext=audioContext||new Audio();audioContext.resume().catch(()=>{});}}catch(_){}}
@@ -1008,7 +1018,7 @@
   function restore(snapshot){
     const data=snapshot?.modelContent;if(!['Ember','Klip'].includes(data?.app))return;
     const incoming=data.settings||{};for(const key in defaults)if(typeof incoming[key]===typeof defaults[key])config[key]=incoming[key];
-    if(!['auto','game','screen'].includes(config.mode))config.mode='auto';if(![30,60,90,120,180,240,300].includes(config.duration))config.duration=120;if(!['1920x1080','2560x1440','1280x720'].includes(config.resolution))config.resolution='1920x1080';if(!['24','30','60','120','144','240','custom'].includes(config.fps))config.fps='60';config.customFps=Math.max(1,Math.min(360,Math.round(config.customFps)||90));if(!['quality','bitrate'].includes(config.qualityMode))config.qualityMode='quality';config.videoBitrate=Math.max(5,Math.min(250,Math.round(config.videoBitrate)||60));
+    if(!['auto','game','screen'].includes(config.mode))config.mode='auto';if(![30,60,90,120,180,240,300].includes(config.duration))config.duration=120;if(!['1920x1080','2560x1440','1280x720'].includes(config.resolution))config.resolution='1920x1080';if(!['24','30','60','120','144','240','custom'].includes(config.fps))config.fps='60';config.customFps=Math.max(1,Math.min(360,Math.round(config.customFps)||90));if(!['quality','bitrate'].includes(config.qualityMode))config.qualityMode='quality';config.videoBitrate=Math.max(5,Math.min(250,Math.round(config.videoBitrate)||60));config.notificationVolume=Number.isFinite(config.notificationVolume)?Math.max(0,Math.min(100,Math.round(config.notificationVolume))):75;if(!['ember','soft','glass','arcade'].includes(config.notificationSound))config.notificationSound='ember';
     if(data.audioSources)for(const key in audio)if(typeof data.audioSources[key]==='boolean')audio[key]=data.audioSources[key];
     if(['sunset','sunset-organized'].includes(data.layout)){
       const ui=snapshot.privateContent||{};view=data.view==='list'?'list':'grid';
@@ -1029,6 +1039,7 @@
   for(const action of ['check','download','install','login'])$('sk-update-'+action).addEventListener('click',()=>runUpdateAction(action));$('sk-update-login-code').addEventListener('focus',event=>event.target.select());
   root.querySelectorAll('[role=tablist]').forEach(nav=>nav.addEventListener('keydown',event=>{const vertical=nav.getAttribute('aria-orientation')==='vertical',keys=vertical?['ArrowUp','ArrowDown','Home','End']:['ArrowLeft','ArrowRight','Home','End'];if(!keys.includes(event.key))return;const buttons=[...nav.querySelectorAll('[role=tab]')],current=buttons.indexOf(document.activeElement);if(current<0)return;event.preventDefault();const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:(current+(['ArrowRight','ArrowDown'].includes(event.key)?1:-1)+buttons.length)%buttons.length;buttons[next].focus();buttons[next].click();}));
   root.querySelectorAll('[data-setting]').forEach(el=>el.addEventListener('change',()=>changeSetting(el)));
+  root.querySelector('[data-setting=notificationVolume]').addEventListener('input',event=>{$('sk-notification-volume-value').textContent=event.target.value+'%';if(chime.player)chime.player.volume=Number(event.target.value)/100;});
   $('sk-bitrate-preset').addEventListener('change',event=>{if(event.target.value==='custom'){root.querySelector('[data-setting=videoBitrate]').focus();return;}const bitrate=root.querySelector('[data-setting=videoBitrate]');bitrate.value=event.target.value;changeSetting(bitrate);});
   $('sk-view-grid').addEventListener('click',()=>{view='grid';$('sk-library-body').scrollTop=0;renderClips();persist();});
   $('sk-view-list').addEventListener('click',()=>{view='list';$('sk-library-body').scrollTop=0;renderClips();persist();});

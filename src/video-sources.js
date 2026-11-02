@@ -35,7 +35,10 @@ class VideoSources {
   try{
    await this.setEnabled(this.gameId,false);await this.setEnabled(this.windowId,false);
    this.method='game';this.probing=false;this.windowUnavailable=false;this.failedSince=this.now();this.hadGameImage=false;
-   await this.obs.call('SetInputSettings',{inputName:'Klip Oyun',inputSettings:{capture_mode:'window',window:selector,priority:2},overlay:true});
+   // Quake Live's OpenGL shared-texture transport can retain a stale frame.
+   // Shared memory avoids that interop path; other games keep texture capture.
+   const compatibility=/^quakelive(?:_steam)?\.exe$/i.test(selector.split(':').at(-1));
+   await this.obs.call('SetInputSettings',{inputName:'Klip Oyun',inputSettings:{capture_mode:'window',window:selector,priority:2,sli_compatibility:compatibility},overlay:true});
    if(this.windowId!=null)await this.obs.call('SetInputSettings',{inputName:'Klip Pencere',inputSettings:{window:selector,priority:2,method:2},overlay:true});
    this.pendingTarget=null;await this.visibility();this.target=selector;
    if(previous!=='game')this.onChange({method:'game',target:selector});

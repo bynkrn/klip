@@ -16,7 +16,7 @@ class Capture extends EventEmitter{
   const next=resolveAudioSync(this.audioSyncProfile,endpoint);this.syncOffsets=next;this.emit('audio-sync',{...next,name:next.matched?this.audioSyncProfile.name:endpoint.name,endpointId:endpoint.endpointId});return true;
  }
  async ensureInput(name,kind,settings,sceneItemEnabled=true){
-  const loopback=kind==='wasapi_output_capture'||kind==='wasapi_process_output_capture',offset=name==='Klip Ses Tarayıcı'?0:inputSyncOffset(kind,this.syncOffsets),key=JSON.stringify(settings)+'|'+offset;if(this.inputSettings.get(name)===key)return;
+  const loopback=kind==='wasapi_output_capture'||kind==='wasapi_process_output_capture'||kind==='ember_system_audio_capture',offset=name==='Klip Ses Tarayıcı'?0:inputSyncOffset(kind,this.syncOffsets),key=JSON.stringify(settings)+'|'+offset;if(this.inputSettings.get(name)===key)return;
   const o=this.obs;const list=await o.call('GetInputList');if(list.inputs.some(i=>i.inputName===name)){await o.call('SetInputSettings',{inputName:name,inputSettings:settings,overlay:true});if(loopback)await o.call('SetInputAudioSyncOffset',{inputName:name,inputAudioSyncOffset:offset});}
   else await o.call('CreateInput',{sceneName:'Klip',inputName:name,inputKind:kind,inputSettings:settings,sceneItemEnabled,...loopback?{inputAudioSyncOffset:offset}:{}});
   this.inputSettings.set(name,key);
@@ -78,7 +78,9 @@ class Capture extends EventEmitter{
   const category=exe=>gameProcess(exe,this.config.targetExe)?2:/discord/i.test(exe)?3:/chrome|msedge|firefox|brave/i.test(exe)?4:/spotify|music/i.test(exe)?5:0;
   if(this.config.autoAudio===false)candidates.clear();
   for(const [exe,item]of candidates){const track=category(exe),existing=this.audio.find(a=>a.track===track);if(!track||existing?.exe===exe)continue;if(existing&&candidates.has(existing.exe)&&!(track===2&&exe.toLowerCase()===this.activeGameExe?.toLowerCase()))continue;const name='Klip Ses '+track;await this.ensureInput(name,'wasapi_process_output_capture',{window:item.itemValue,priority:2});await o.call('SetInputAudioTracks',{inputName:name,inputAudioTracks:Object.fromEntries([1,2,3,4,5,6].map(n=>[n,n===track]))});await o.call('SetInputMute',{inputName:name,inputMuted:this.config.audioEnabled?.[track]===false});this.audio=this.audio.filter(a=>a.track!==track);this.audio.push({exe,name:exe.replace(/\.exe$/i,''),track});}
-  await this.ensureInput('Klip Sistem Sesi','wasapi_output_capture',{device_id:'default'});await o.call('SetInputAudioTracks',{inputName:'Klip Sistem Sesi',inputAudioTracks:{1:true,2:false,3:false,4:false,5:false,6:false}});
+  // Exclude the Electron main process and every renderer/audio utility child.
+  // Windows performs this continuously; game audio never ducks around a chime.
+  await this.ensureInput('Klip Sistem Sesi','ember_system_audio_capture',{target_process_id:process.pid});await o.call('SetInputAudioTracks',{inputName:'Klip Sistem Sesi',inputAudioTracks:{1:true,2:false,3:false,4:false,5:false,6:false}});
   await this.ensureInput('Klip Mikrofon','wasapi_input_capture',{device_id:'default'});await o.call('SetInputAudioTracks',{inputName:'Klip Mikrofon',inputAudioTracks:{1:this.config.audioEnabled?.[1]!==false,2:false,3:false,4:false,5:false,6:true}});this.emit('audio',this.audio);
   for(const track of [1,2,3,4,5,6]){const assigned=track===1||track===6||this.config.autoAudio!==false&&this.audio.some(a=>a.track===track);const enabled=assigned&&this.config.audioEnabled?.[track]!==false;const name=track===1?'Klip Sistem Sesi':track===6?'Klip Mikrofon':'Klip Ses '+track;await o.call('SetInputMute',{inputName:name,inputMuted:!enabled}).catch(()=>{});}
  }
