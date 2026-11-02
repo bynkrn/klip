@@ -13,11 +13,11 @@ class OBS extends EventEmitter {
  async start(config,bufferDir){
   if(this.closing)await this.closing;
   const bin=path.join(this.root,'bin','64bit');
-  const child=this.spawn(path.join(bin,'Klip.Capture.exe'),[],{cwd:bin,windowsHide:true,env:{...process.env,PATH:bin+';'+(process.env.PATH||'')},stdio:['pipe','pipe','pipe']});
+  const child=this.spawn(path.join(bin,'Ember.Capture.exe'),[],{cwd:bin,windowsHide:true,env:{...process.env,PATH:bin+';'+(process.env.PATH||'')},stdio:['pipe','pipe','pipe']});
   const session={child,intentional:false,notified:false,stderr:'',tail:''};this.session=session;this.process=child;
   let bootResolve,bootReject;
   const boot=new Promise((resolve,reject)=>{bootResolve=resolve;bootReject=reject;});
-  const bootTimer=setTimeout(()=>bootReject(new Error('Klip kayıt hizmeti başlatılamadı.')),15000);
+  const bootTimer=setTimeout(()=>bootReject(new Error('Ember kayıt hizmeti başlatılamadı.')),15000);
   session.exited=new Promise(resolve=>{session.resolveExit=resolve;});
   child.stdout.setEncoding('utf8');child.stderr.setEncoding('utf8');
   child.stderr.on('data',data=>{session.stderr=(session.stderr+data.toString()).slice(-12000);});
@@ -40,7 +40,7 @@ class OBS extends EventEmitter {
   child.on('exit',(code,signal)=>{
    session.resolveExit();if(this.session!==session)return;
    this.process=null;this.ready=false;this.socket.readyState=3;
-   const error=new Error('Klip kayıt hizmeti kapandı'+(code?' ('+code+')':'')+(session.stderr?'\n'+session.stderr.slice(-1800):''));
+   const error=new Error('Ember kayıt hizmeti kapandı'+(code?' ('+code+')':'')+(session.stderr?'\n'+session.stderr.slice(-1800):''));
    bootReject(error);this.rejectPending(error);
    if(!session.intentional&&!session.notified){session.notified=true;this.emit('engine-stopped');}
   });
@@ -49,7 +49,7 @@ class OBS extends EventEmitter {
  }
  rejectPending(error){for(const request of this.pending.values()){clearTimeout(request.timer);request.reject(error);}this.pending.clear();}
  call(type,data={},timeoutMs=15000){return new Promise((resolve,reject)=>{
-  const child=this.process;if(!this.ready||!child||child.stdin.destroyed)return reject(new Error('Klip kayıt hizmeti hazır değil'));
+  const child=this.process;if(!this.ready||!child||child.stdin.destroyed)return reject(new Error('Ember kayıt hizmeti hazır değil'));
   const id=crypto.randomUUID(),timer=setTimeout(()=>{this.pending.delete(id);reject(new Error('Kayıt hizmeti zaman aşımı: '+type));},timeoutMs);
   this.pending.set(id,{resolve,reject,timer});child.stdin.write(JSON.stringify({id,type,data})+'\n',error=>{if(error){const request=this.pending.get(id);if(request){clearTimeout(timer);this.pending.delete(id);reject(error);}}});
  });}
@@ -62,7 +62,7 @@ class OBS extends EventEmitter {
    if(this.process===child&&this.ready){try{await this.call('Close',{},20000);}catch{} }
    if(!child.stdin.destroyed)child.stdin.end();
    let timer;await Promise.race([session.exited,new Promise(resolve=>{timer=setTimeout(()=>{child.kill();resolve();},5000);})]);clearTimeout(timer);
-   if(this.session===session){this.ready=false;this.socket.readyState=3;this.process=null;this.session=null;this.rejectPending(new Error('Klip kayıt hizmeti kapandı'));}
+   if(this.session===session){this.ready=false;this.socket.readyState=3;this.process=null;this.session=null;this.rejectPending(new Error('Ember kayıt hizmeti kapandı'));}
   })();
   try{await this.closing;}finally{this.closing=null;}
  }

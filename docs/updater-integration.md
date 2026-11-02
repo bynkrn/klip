@@ -22,11 +22,11 @@ updates.on('state', update => status('', {update}));
 
 Release `/releases/latest` must be published, stable, and newer, with exactly one of each:
 
-- `klip-update.json`: exact UTF-8 signed bytes containing `{version, platform:'win32', arch:'x64', fileName:'Klip-vX.Y.Z-win32-x64.zip', size, sha256}`.
-- `klip-update.sig`: standard base64 Ed25519 signature over those exact JSON bytes.
-- The named ZIP, with API size equal to the signed size and only the `Klip-win32-x64/` root.
+- `ember-update.json`: exact UTF-8 signed bytes containing `{version, platform:'win32', arch:'x64', fileName:'Ember-vX.Y.Z-win32-x64.zip', size, sha256}`.
+- `ember-update.sig`: standard base64 Ed25519 signature over those exact JSON bytes.
+- The named ZIP, with API size equal to the signed size and only the `Ember-win32-x64/` root.
 
-The ZIP must contain `Klip.exe` and `resources/app/package.json`, whose version equals the signed version. Package-with-ASAR layouts are intentionally not accepted by this installer.
+The ZIP must contain `Ember.exe` and `resources/app/package.json`, whose version equals the signed version. Package-with-ASAR layouts are intentionally not accepted by this installer.
 
 ## Apply and health acknowledgement
 

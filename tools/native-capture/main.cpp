@@ -79,18 +79,26 @@ class Engine{
   info.output_width=data.value("outputWidth",info.base_width);info.output_height=data.value("outputHeight",info.base_height);
   info.fps_num=data.value("fpsNumerator",60u);info.fps_den=data.value("fpsDenominator",1u);
   require(info.base_width>=16&&info.base_width<=8192&&info.base_height>=16&&info.base_height<=8192&&info.fps_num>=1&&info.fps_num<=360&&info.fps_den==1,"Invalid video dimensions/FPS");
-  info.output_format=VIDEO_FORMAT_NV12;info.gpu_conversion=true;info.colorspace=VIDEO_CS_709;info.range=VIDEO_RANGE_PARTIAL;info.scale_type=OBS_SCALE_BICUBIC;
+  info.output_format=VIDEO_FORMAT_NV12;info.gpu_conversion=true;info.colorspace=VIDEO_CS_709;info.range=VIDEO_RANGE_PARTIAL;info.scale_type=OBS_SCALE_LANCZOS;
   int result=obs_reset_video(&info);require(result==OBS_VIDEO_SUCCESS,"D3D11 video initialization failed: "+std::to_string(result));
  }
  void prepareReplay(){
   if(replay)return;
-  Data videoSettings({{"rate_control","CQP"},{"cqp",16},{"preset","p5"},{"profile","high"},{"keyint_sec",1}});
-  videoEncoder=obs_video_encoder_create("obs_nvenc_h264_tex","Klip NVENC",videoSettings,nullptr);
+  bool manual=config["qualityMode"]=="bitrate";
+  json encoding={{"rate_control",manual?"CBR":"CQP"},{"preset","p5"},{"profile","high"},{"keyint_sec",1}};
+  if(manual)encoding["bitrate"]=config["videoBitrate"].get<int>()*1000;else encoding["cqp"]=12;
+  Data videoSettings(encoding);
+  videoEncoder=obs_video_encoder_create("obs_nvenc_h264_tex","Ember NVENC",videoSettings,nullptr);
   require(videoEncoder!=nullptr,"NVIDIA NVENC H.264 encoder is unavailable");obs_encoder_set_video(videoEncoder,obs_get_video());
-  Data outputSettings({{"directory",buffer.u8string()},{"format","Klip-%CCYY-%MM-%DD-%hh-%mm-%ss"},{"extension","mkv"},{"allow_spaces",true},{"max_time_sec",config.value("duration",120)},{"max_size_mb",4096}});
-  replay=obs_output_create("replay_buffer","Klip Replay",outputSettings,nullptr);require(replay!=nullptr,"Replay buffer output is unavailable");
+  fprintf(stderr,"Ember replay encoding: %s\n",encoding.dump().c_str());
+  int duration=config.value("duration",120);
+  // Six AAC tracks total 1.536 Mbps. Size the manual-mode packet cap for the
+  // entire selected history, with room for muxing and rate-control variation.
+  int64_t maxSizeMiB=manual?(int64_t)std::ceil(duration*(config["videoBitrate"].get<double>()+1.536)*1000000.0/8.0*1.15/1048576.0):4096;
+  Data outputSettings({{"directory",buffer.u8string()},{"format","Ember-%CCYY-%MM-%DD-%hh-%mm-%ss"},{"extension","mkv"},{"allow_spaces",true},{"max_time_sec",duration},{"max_size_mb",maxSizeMiB}});
+  replay=obs_output_create("replay_buffer","Ember Replay",outputSettings,nullptr);require(replay!=nullptr,"Replay buffer output is unavailable");
   obs_output_set_video_encoder(replay,videoEncoder);
-  for(size_t i=0;i<audioEncoders.size();++i){Data settings({{"bitrate",256}});auto name="Klip AAC "+std::to_string(i+1);audioEncoders[i]=obs_audio_encoder_create("ffmpeg_aac",name.c_str(),settings,i,nullptr);require(audioEncoders[i]!=nullptr,"AAC encoder is unavailable");obs_encoder_set_audio(audioEncoders[i],obs_get_audio());obs_output_set_audio_encoder(replay,audioEncoders[i],i);}
+  for(size_t i=0;i<audioEncoders.size();++i){Data settings({{"bitrate",256}});auto name="Ember AAC "+std::to_string(i+1);audioEncoders[i]=obs_audio_encoder_create("ffmpeg_aac",name.c_str(),settings,i,nullptr);require(audioEncoders[i]!=nullptr,"AAC encoder is unavailable");obs_encoder_set_audio(audioEncoders[i],obs_get_audio());obs_output_set_audio_encoder(replay,audioEncoders[i],i);}
   signal_handler_t *signals=obs_output_get_signal_handler(replay);signal_handler_connect(signals,"saved",onSaved,this);signal_handler_connect(signals,"stop",onStopped,this);
  }
  void prepareVisibleDisplays(){
@@ -113,6 +121,10 @@ public:
  ~Engine(){try{shutdown();}catch(...){}}
  void initialize(const json &data){
   require(!initialized,"Capture engine is already initialized");root=fs::u8path(data.at("root").get<std::string>());buffer=fs::u8path(data.at("bufferDir").get<std::string>());config=data.at("config");
+  require(config.is_object(),"Capture config must be an object");
+  auto mode=config.find("qualityMode");config["qualityMode"]=mode!=config.end()&&mode->is_string()&&*mode=="bitrate"?"bitrate":"quality";
+  auto selected=config.find("videoBitrate");double bitrate=selected!=config.end()&&selected->is_number()?selected->get<double>():60;
+  config["videoBitrate"]=std::isfinite(bitrate)&&bitrate>=5&&bitrate<=250&&std::floor(bitrate)==bitrate?(int)bitrate:60;
   require(root.is_absolute()&&buffer.is_absolute(),"Absolute engine/buffer paths required");fs::create_directories(buffer);
   auto moduleConfig=buffer/"engine-state";fs::create_directories(moduleConfig);
   require(obs_startup("en-US",moduleConfig.u8string().c_str(),nullptr),"Cannot initialize capture core");initialized=true;
@@ -147,6 +159,7 @@ public:
    Data settings(initialSettings);auto source=obs_source_create(kind.c_str(),name.c_str(),settings,nullptr);require(source!=nullptr,"Cannot create input: "+kind);
    if(staged){obs_source_set_sync_offset(source,(int64_t)std::llround(initialOffset*1000000.0));Data actual(actualSettings);obs_source_update(source,actual);}
    auto added=obs_scene_add(scene(data),source);if(!added){obs_source_release(source);throw std::runtime_error("Cannot add source to scene");}inputs[name]=source;
+   obs_sceneitem_set_scale_filter(added,OBS_SCALE_LANCZOS);
    obs_sceneitem_set_visible(added,data.value("sceneItemEnabled",true));return{{"sceneItemId",obs_sceneitem_get_id(added)}};
   }
   if(type=="SetInputSettings"){auto source=input(data);Data patch(data.at("inputSettings"));if(data.value("overlay",true)){obs_data_t *settings=obs_source_get_settings(source);obs_data_apply(settings,patch);obs_source_update(source,settings);obs_data_release(settings);}else obs_source_update(source,patch);return json::object();}
@@ -172,13 +185,19 @@ public:
    info.bounds.x=t.value("boundsWidth",info.bounds.x);info.bounds.y=t.value("boundsHeight",info.bounds.y);info.bounds_alignment=t.value("boundsAlignment",info.bounds_alignment);info.alignment=OBS_ALIGN_TOP|OBS_ALIGN_LEFT;obs_sceneitem_set_info2(target,&info);
    obs_sceneitem_crop crop{};obs_sceneitem_get_crop(target,&crop);crop.left=t.value("cropLeft",crop.left);crop.top=t.value("cropTop",crop.top);crop.right=t.value("cropRight",crop.right);crop.bottom=t.value("cropBottom",crop.bottom);obs_sceneitem_set_crop(target,&crop);return json::object();
   }
-  if(type=="GetSceneItemTransform"){auto target=item(data);auto source=obs_sceneitem_get_source(target);obs_transform_info info{};obs_sceneitem_get_info2(target,&info);obs_sceneitem_crop crop{};obs_sceneitem_get_crop(target,&crop);const char *bounds[]={"OBS_BOUNDS_NONE","OBS_BOUNDS_STRETCH","OBS_BOUNDS_SCALE_INNER","OBS_BOUNDS_SCALE_OUTER","OBS_BOUNDS_SCALE_TO_WIDTH","OBS_BOUNDS_SCALE_TO_HEIGHT","OBS_BOUNDS_MAX_ONLY"};return{{"sceneItemTransform",{{"sourceWidth",obs_source_get_width(source)},{"sourceHeight",obs_source_get_height(source)},{"positionX",info.pos.x},{"positionY",info.pos.y},{"rotation",info.rot},{"alignment",info.alignment},{"boundsType",bounds[info.bounds_type]},{"boundsWidth",info.bounds.x},{"boundsHeight",info.bounds.y},{"boundsAlignment",info.bounds_alignment},{"scaleX",info.scale.x},{"scaleY",info.scale.y},{"cropLeft",crop.left},{"cropTop",crop.top},{"cropRight",crop.right},{"cropBottom",crop.bottom}}}};}
+  if(type=="GetSceneItemTransform"){auto target=item(data);auto source=obs_sceneitem_get_source(target);obs_transform_info info{};obs_sceneitem_get_info2(target,&info);obs_sceneitem_crop crop{};obs_sceneitem_get_crop(target,&crop);const char *bounds[]={"OBS_BOUNDS_NONE","OBS_BOUNDS_STRETCH","OBS_BOUNDS_SCALE_INNER","OBS_BOUNDS_SCALE_OUTER","OBS_BOUNDS_SCALE_TO_WIDTH","OBS_BOUNDS_SCALE_TO_HEIGHT","OBS_BOUNDS_MAX_ONLY"};return{{"sceneItemTransform",{{"sourceWidth",obs_source_get_width(source)},{"sourceHeight",obs_source_get_height(source)},{"positionX",info.pos.x},{"positionY",info.pos.y},{"rotation",info.rot},{"alignment",info.alignment},{"boundsType",bounds[info.bounds_type]},{"boundsWidth",info.bounds.x},{"boundsHeight",info.bounds.y},{"boundsAlignment",info.bounds_alignment},{"scaleX",info.scale.x},{"scaleY",info.scale.y},{"scaleFilter",obs_sceneitem_get_scale_filter(target)==OBS_SCALE_LANCZOS?"lanczos":"other"},{"cropLeft",crop.left},{"cropTop",crop.top},{"cropRight",crop.right},{"cropBottom",crop.bottom}}}};}
   if(type=="SetStudioModeEnabled"){require(!data.value("studioModeEnabled",false),"Studio mode is not available");return json::object();}
   if(type=="SetVideoSettings"){videoSettings(data);return json::object();}
   if(type=="GetVideoSettings"){obs_video_info info{};obs_get_video_info(&info);return{{"baseWidth",info.base_width},{"baseHeight",info.base_height},{"outputWidth",info.output_width},{"outputHeight",info.output_height},{"fpsNumerator",info.fps_num},{"fpsDenominator",info.fps_den}};}
   if(type=="StartReplayBuffer"){prepareVisibleDisplays();prepareReplay();require(!obs_output_active(replay),"Replay buffer already running");{std::lock_guard<std::mutex> lock(stopMutex);outputStopped=false;}if(!obs_output_start(replay)){std::lock_guard<std::mutex> lock(stopMutex);outputStopped=true;throw std::runtime_error("Cannot start NVENC replay buffer: "+value(obs_output_get_last_error(replay))+" "+value(obs_encoder_get_last_error(videoEncoder)));}return json::object();}
   if(type=="StopReplayBuffer"){stopOutput();return json::object();}
   if(type=="GetReplayBufferStatus")return{{"outputActive",replay&&obs_output_active(replay)}};
+  if(type=="GetReplayEncodingSettings"){
+   prepareReplay();auto settings=obs_encoder_get_settings(videoEncoder);auto effective=json::parse(obs_data_get_json(settings));obs_data_release(settings);
+   auto outputSettings=obs_output_get_settings(replay);auto limitMiB=obs_data_get_int(outputSettings,"max_size_mb");obs_data_release(outputSettings);
+   obs_video_info info{};obs_get_video_info(&info);
+   return{{"qualityMode",config["qualityMode"]},{"videoBitrate",config["videoBitrate"]},{"encoderId",obs_encoder_get_id(videoEncoder)},{"encoderSettings",effective},{"active",obs_output_active(replay)},{"outputScaleFilter",info.scale_type==OBS_SCALE_LANCZOS?"lanczos":"other"},{"replayBufferLimitMiB",limitMiB}};
+  }
   if(type=="SaveReplayBuffer"){require(replay&&obs_output_active(replay),"Replay buffer is not running");calldata_t args;calldata_init(&args);bool ok=proc_handler_call(obs_output_get_proc_handler(replay),"save",&args);calldata_free(&args);require(ok,"Cannot request replay save");return json::object();}
   throw std::runtime_error("Unsupported capture request: "+type);
  }

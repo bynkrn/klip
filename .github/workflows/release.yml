@@ -56,8 +56,8 @@ jobs:
         run: |
           ./tools/package.ps1
           $version=(Get-Content package.json -Raw | ConvertFrom-Json).version
-          Compress-Archive -LiteralPath dist/Klip-win32-x64 -DestinationPath "dist/Klip-v$version-win32-x64.zip"
-          node tools/sign-release.js --archive "dist/Klip-v$version-win32-x64.zip" --version $version
+          Compress-Archive -LiteralPath dist/Ember-win32-x64 -DestinationPath "dist/Ember-v$version-win32-x64.zip"
+          node tools/sign-release.js --archive "dist/Ember-v$version-win32-x64.zip" --version $version
         env:
           KLIP_SIGNING_PRIVATE_KEY: ${{ secrets.KLIP_SIGNING_PRIVATE_KEY }}
       - name: Publish Private Release
@@ -65,6 +65,6 @@ jobs:
         shell: pwsh
         run: |
           $version=(Get-Content package.json -Raw | ConvertFrom-Json).version
-          ./tools/github/gh.exe release create $env:GITHUB_REF_NAME "dist/Klip-v$version-win32-x64.zip" dist/klip-update.json dist/klip-update.sig --repo $env:GITHUB_REPOSITORY --verify-tag --title "Klip $version" --generate-notes
+          ./tools/github/gh.exe release create $env:GITHUB_REF_NAME "dist/Ember-v$version-win32-x64.zip" dist/ember-update.json dist/ember-update.sig --repo $env:GITHUB_REPOSITORY --verify-tag --title "Ember $version" --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

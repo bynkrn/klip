@@ -24,11 +24,11 @@ try {
   ) -join '|'
   $packager=Join-Path $projectRoot 'tools/build-deps/npm-lock/node_modules/@electron/packager/bin/electron-packager.mjs'
   if(-not (Test-Path -LiteralPath $packager)){$packager=Join-Path $projectRoot 'node_modules/@electron/packager/bin/electron-packager.mjs'}
-  node $packager . Klip --platform=win32 --arch=x64 --electron-version=44.10.1 --out=dist --icon=src/icon.ico --no-asar --overwrite --prune=false "--ignore=$ignore"
+  node $packager . Ember --platform=win32 --arch=x64 --electron-version=44.10.1 --out=dist --icon=src/icon.ico --no-asar --overwrite --prune=false "--ignore=$ignore"
   if ($LASTEXITCODE -ne 0) { throw 'Packaging failed' }
-  if (-not (Test-Path -LiteralPath 'dist\Klip-win32-x64\resources\app\engine\obs\bin\64bit\Klip.Capture.exe')) { throw 'Packaged capture service missing' }
-  if (Test-Path -LiteralPath 'dist\Klip-win32-x64\resources\app\engine\obs\bin\64bit\obs64.exe') { throw 'OBS GUI must not be included' }
-  $captureRoot=Join-Path $projectRoot 'dist/Klip-win32-x64/resources/app/engine/obs'
+  if (-not (Test-Path -LiteralPath 'dist\Ember-win32-x64\resources\app\engine\obs\bin\64bit\Ember.Capture.exe')) { throw 'Packaged capture service missing' }
+  if (Test-Path -LiteralPath 'dist\Ember-win32-x64\resources\app\engine\obs\bin\64bit\obs64.exe') { throw 'OBS GUI must not be included' }
+  $captureRoot=Join-Path $projectRoot 'dist/Ember-win32-x64/resources/app/engine/obs'
   foreach($module in @('win-capture','win-wasapi','obs-nvenc','obs-ffmpeg')) {
     if(-not(Test-Path -LiteralPath (Join-Path $captureRoot "core/$module/$module.dll"))){throw "Packaged capture module missing: $module"}
   }
@@ -38,8 +38,8 @@ try {
   foreach($runtime in @('MSVCP140.dll','VCRUNTIME140.dll','VCRUNTIME140_1.dll')) {
     if(-not(Test-Path -LiteralPath (Join-Path $captureRoot "bin/64bit/$runtime"))){throw "Packaged app-local runtime missing: $runtime"}
   }
-  if (-not (Test-Path -LiteralPath 'dist\Klip-win32-x64\resources\app\tools\update-install.exe')) { throw 'Packaged updater missing' }
-  if (-not (Test-Path -LiteralPath 'dist\Klip-win32-x64\resources\app\tools\github\gh.exe')) { throw 'Packaged private-update client missing' }
-  if (-not (Test-Path -LiteralPath 'dist\Klip-win32-x64\resources\app\tools\window-watcher.exe')) { throw 'Packaged window watcher missing' }
-  if (-not (Test-Path -LiteralPath 'dist\Klip-win32-x64\resources\app\tools\recycle-bin.exe')) { throw 'Packaged recycle helper missing' }
+  if (-not (Test-Path -LiteralPath 'dist\Ember-win32-x64\resources\app\tools\update-install.exe')) { throw 'Packaged updater missing' }
+  if (-not (Test-Path -LiteralPath 'dist\Ember-win32-x64\resources\app\tools\github\gh.exe')) { throw 'Packaged private-update client missing' }
+  if (-not (Test-Path -LiteralPath 'dist\Ember-win32-x64\resources\app\tools\window-watcher.exe')) { throw 'Packaged window watcher missing' }
+  if (-not (Test-Path -LiteralPath 'dist\Ember-win32-x64\resources\app\tools\recycle-bin.exe')) { throw 'Packaged recycle helper missing' }
 } finally { Pop-Location }

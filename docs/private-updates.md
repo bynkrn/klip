@@ -14,7 +14,7 @@ Uygulama açılışta, açıkken 15 dakikada bir ve Ayarlar → Güncellemeler �
 2. Değişiklikleri gönderin.
 3. Eşleşen açık bir sürüm etiketi gönderin; örneğin `v0.4.1`.
 
-Etiket iş akışı Windows paketini oluşturur, Ed25519 ile sürüm bilgisini imzalar ve ZIP + `klip-update.json` + `klip-update.sig` dosyalarını aynı **özel** GitHub Release’e yükler. Uygulama salt kaynak kodu commit’ine göre güncelleme kurmaz; doğrulanmış Release arar.
+Etiket iş akışı Windows paketini oluşturur, Ed25519 ile sürüm bilgisini imzalar ve ZIP + `ember-update.json` + `ember-update.sig` dosyalarını aynı **özel** GitHub Release’e yükler. Uygulama salt kaynak kodu commit’ine göre güncelleme kurmaz; doğrulanmış Release arar.
 
 **Bu çalışma sırasında sürüm etiketi veya dağıtım Release’i oluşturulmadı.** Yerel `dist` klasörü mevcut kişisel uygulama içindir; kaynak depoya eklenmez.
 

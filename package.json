@@ -1,7 +1,7 @@
 {
-  "name": "klip",
-  "productName": "Klip",
-  "version": "0.4.0",
+  "name": "ember-capture",
+  "productName": "Ember",
+  "version": "0.5.0",
   "private": true,
   "main": "src/main.js",
   "scripts": {
