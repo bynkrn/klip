@@ -43,7 +43,8 @@ jobs:
         shell: pwsh
         run: |
           node tools/build-ui.js
-          npm test
+          # Native PowerShell/Electron fixtures share limited Windows runner resources.
+          node --test --test-concurrency=1 tests/*.test.js tools/native-capture/adapter.test.js
       # Branch pushes/manual checks never make a distributable or publish assets.
       # A matching explicit version tag is the deliberate release trigger.
       - name: Validate Release Version
