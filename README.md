@@ -2,7 +2,7 @@
 
 Windows için yerel replay buffer uygulaması. Sunset arayüzü; tek satır kayıt kontrolleri, ikon gezinme, kart/liste kütüphanesi ve Türkçe/English seçimi içerir. Ürün adı ve yazı logosu **Ember**; mevcut simge korunur.
 
-Kaynak deposu [bynkrn/klip](https://github.com/bynkrn/klip) özeldir. Henüz yayımlanmış bir Release veya arkadaşlara gönderilmeye hazır ZIP/kurulum paketi yoktur. Mevcut çalışma kişisel yerel uygulama ve kaynak koduyla sınırlıdır.
+Kaynak deposu [bynkrn/klip](https://github.com/bynkrn/klip) herkese açıktır. Henüz yayımlanmış bir Release veya arkadaşlara gönderilmeye hazır ZIP/kurulum paketi yoktur. Mevcut çalışma kişisel yerel uygulama ve kaynak koduyla sınırlıdır.
 
 ## Kullanım
 
@@ -21,9 +21,9 @@ Kaynak deposu [bynkrn/klip](https://github.com/bynkrn/klip) özeldir. Henüz yay
 `Ember.Capture.exe`, libobs 33.0.1 kitaplıklarını pencere göstermeden kullanır. `obs64.exe`, OBS arayüzü, Qt veya websocket başlatılmaz; kullanıcının OBS profilleri okunmaz/değiştirilmez. NVENC denetimi, oyun kancası ve replay muxer gibi kısa ömürlü kitaplık yardımcıları kullanılabilir.
 
 - Mevcut arka uç **NVIDIA NVENC H.264, CQP12, 1 saniye anahtar kare aralığı** kullanır. AMD/Intel kodlayıcı desteği veya arkadaş bilgisayarında doğrulama iddiası yoktur.
-- Bellek tamponundan kayıtta video yeniden kodlanmadan MP4’e alınır. RAM kullanımı bit hızına bağlıdır; OBS/Medal karşısında performans üstünlüğü ölçülmüş değildir.
-- Altı ses izi: birleşik ses, oyun, Discord, tarayıcı, müzik ve mikrofon. Uygulama ayrımı Windows süreç ses yakalamasıdır; sınırsız uygulama izi yoktur. Boş izler sessiz kalır.
-- Otomatik oyun/ekran geçişi ve aynı pencereye Windows Graphics Capture geri dönüşü vardır. **Yalnız Oyun** başarısızlıkta monitörü açmaz. Özel tam ekran, minimize davranışı ve anti-cheat uyumluluğu oyun bazında değişebilir.
+- Video tamponu gerçekten disk veya RAM üzerinde çalışır. Yeni kurulumda disk varsayılandır. Sıkıştırılmış paketler en fazla seçili süre + bir GOP kadar tutulur; kaydetme anındaki paketler silinmeye karşı sabitlenir. Varsayılan RAM sınırı 4 GiB, disk sınırı 64 GiB; disk için 1 GiB boş alan korunur. Sınıra ulaşmak geçmişi sessizce kısaltmaz: mevcut geçmiş otomatik kaydedilir. Tam MP4 için alan yoksa disk günlükleri kurtarma manifestiyle saklanır; RAM geçmişi kurtarılana veya açıkça silinene kadar canlı tutulur. Ayarlar içindeki kurtarma düğmesi yeniden denemeyi sağlar. Disk günlüklerinden olağanüstü kurtarmada birleşik ses/mikrofon korunur; ayrı uygulama izlerinin kurtarılamadığı açıkça bildirilir. Video yeniden kodlanmaz. OBS/Medal karşısında FPS üstünlüğü ölçülmüş değildir.
+- Uygulama izlerine sabit dört/altı sınırı yoktur. Windows ses oturumları süreç ağaçlarına göre izlenir; aynı uygulamanın kökleri tek izde toplanır. Sesi olan örnekler zaman damgalı ayrı geçici PCM günlüklerinde tutulur. Steam gibi başka uygulamaları alt süreç olarak açan başlatıcılarda örtüşen ata izleri güvenli biçimde atlanır; aynı oyun sesi iki kez eklenmez ve birleşik ses yedeğiyle ilgili uyarı gösterilir. Klip hazırlanırken gerçek video aralığında ses üretmeyen uygulamalar elenir; kalanlar AAC 256 kbps ayrı izlere eklenir. Birleşik ses ilk, mikrofon etkinse son izdir. Video tamponu RAM olsa da uygulama ses günlükleri disk kullanır. Kaynak yetersizliğinde sorun açıkça bildirilir; birleşik ses yedeği korunur.
+- Otomatik oyun/ekran geçişi, sınırlı yeniden yakalama denemeleri ve aynı pencereye Windows Graphics Capture geri dönüşü vardır. Quake Live paylaşımlı bellek aktarımı gerçek üretici ilerlemesiyle izlenir; sabit menüler piksel değişmedi diye donmuş sayılmaz. Stock WGC/paylaşımlı doku yollarında gerçek kare teslim sayacı sunulmadığından bu kaynakların denetimi bağlantı/pencere yaşam döngüsüyle sınırlıdır. **Yalnız Oyun** başarısızlıkta monitörü açmaz. Özel tam ekran, minimize davranışı ve anti-cheat uyumluluğu oyun bazında değişebilir.
 
 Ekran/WASAPI senkronu yalnız kullanıcının **HyperX Cloud III Wireless, 48 kHz stereo endpoint’i** üzerinde kalibre edildi: kalan sistem farkı **3,33 ms**, süreç farkı **5 ms**; ikisi de bir 60 FPS kare süresinin içindedir. 125 saniyelik ölçüm aralığında drift gözlenmedi. Başka/yeni endpoint’te düzeltme **0 ms**’dir. Bu sonuç diğer cihazlara veya fiziksel akustik gecikmeye genellenmez. Kişisel `%APPDATA%/Ember/audio-sync.json` profili kaynak depoya alınmaz.
 
@@ -35,7 +35,7 @@ Windows başlangıcı ve otomatik tampon varsayılan açıktır. Uygulama her a�
 
 Açılışta, açıkken **15 dakikada bir** ve **Ayarlar → Güncellemeler** üzerinden denetlenir. Yalnız açılış keşfi **Şimdi Güncelle/Daha Sonra** penceresi açar; arka plan keşfi simgeyle gösterilir. Ertelemek simgeyi kaldırmaz. Elle indirme uygulamayı kapatmaz; **Uygula Ve Yeniden Başlat** ayrı bir işlemdir ve öncesinde etkin tampon klip olarak korunur.
 
-Özel depoya erişim kullanıcının resmî GitHub cihaz/web oturumuyla sağlanır; gömülü token yoktur. Uygulama yalnız imzası, sürümü, boyutu ve SHA256’sı doğrulanmış Release’i kurar; kaynak commit’i tek başına güncelleme değildir. Şu an dağıtım Release’i yayımlanmamıştır. Ayrıntılar: [Özel Güncellemeler](docs/private-updates.md).
+Herkese açık [bynkrn/klip](https://github.com/bynkrn/klip) deposundan güncellemeler doğrudan HTTPS üzerinden oturumsuz denetlenir ve indirilir; arkadaşlar için GitHub hesabı, token veya depo daveti gerekmez. Uygulama yalnız imzası, sürümü, boyutu ve SHA256’sı doğrulanmış Release’i kurar; kaynak commit’i tek başına güncelleme değildir. Şu an dağıtım Release’i yayımlanmamıştır; bu durum erişim hatası veya oturum gereksinimi olarak gösterilmez. Ayrıntılar: [Güncellemeler](docs/private-updates.md).
 
 ## Doğrulama
 

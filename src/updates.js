@@ -22,8 +22,36 @@ class GhTransport{
   const {child,completed}=this.command(['auth','login','--hostname','github.com','--git-protocol','https','--web','--skip-ssh-key'],{timeout:10*60*1000});let output='';const consume=chunk=>{output=(output+chunk.toString()).slice(-16000);const match=/\b([A-Z0-9]{4}-[A-Z0-9]{4})\b/.exec(output);if(match)onCode({loginCode:match[1],loginUrl:'https://github.com/login/device'});};child.stdout.on('data',consume);child.stderr.on('data',consume);await completed;
  }
 }
+class PublicGitHub{
+ constructor({fetch=globalThis.fetch}={}){if(typeof fetch!=='function')throw new Error('GitHub bağlantısı kullanılamıyor.');this.fetch=fetch;}
+ async request(endpoint,{accept='application/vnd.github+json',timeout=60000}={}){
+  if(typeof endpoint!=='string'||!/^repos\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\/releases\/(?:latest|assets\/[1-9]\d*))?$/.test(endpoint))throw new Error('Geçersiz GitHub istek adresi.');
+  let url=new URL('https://api.github.com/'+endpoint);if(url.pathname!=='/'+endpoint)throw new Error('Geçersiz GitHub depo adresi.');
+  const asset=accept==='application/octet-stream',hosts=new Set(asset?['api.github.com','github.com','release-assets.githubusercontent.com','objects.githubusercontent.com']:['api.github.com']);
+  const signal=AbortSignal.timeout(timeout),headers={'Accept':accept,'User-Agent':'Ember-Updater','X-GitHub-Api-Version':'2022-11-28'};
+  for(let redirects=0;redirects<=5;redirects++){
+   if(url.protocol!=='https:'||url.username||url.password||url.port||!hosts.has(url.hostname)||(url.hostname==='github.com'&&!url.pathname.includes('/releases/download/')))throw new Error('Güncelleme yalnız güvenilir GitHub HTTPS adreslerinden indirilebilir.');
+   let response;try{response=await this.fetch(url.href,{method:'GET',headers,redirect:'manual',credentials:'omit',referrerPolicy:'no-referrer',signal});}catch{throw new Error('GitHub bağlantısı kurulamadı.');}
+   if([301,302,303,307,308].includes(response.status)){
+    const location=response.headers.get('location');await response.body?.cancel().catch(()=>{});
+    if(!location||redirects===5)throw new Error('GitHub yönlendirme sınırı aşıldı.');
+    try{url=new URL(location,url);}catch{throw new Error('Geçersiz GitHub yönlendirme adresi.');}continue;
+   }
+   if(!response.ok){await response.body?.cancel().catch(()=>{});const error=new Error('GitHub isteği tamamlanamadı (HTTP '+response.status+').');error.httpStatus=response.status;throw error;}
+   if(!response.body)throw new Error('GitHub yanıtı boş.');return response;
+  }
+ }
+ async collect(endpoint,limit,accept){
+  const response=await this.request(endpoint,{accept});const declared=Number(response.headers.get('content-length'));
+  if(Number.isFinite(declared)&&declared>limit){await response.body.cancel().catch(()=>{});throw new Error('GitHub yanıtı beklenen boyutu aştı.');}
+  let size=0;const chunks=[];for await(const value of response.body){const chunk=Buffer.from(value);size+=chunk.length;if(size>limit)throw new Error('GitHub yanıtı beklenen boyutu aştı.');chunks.push(chunk);}return Buffer.concat(chunks,size);
+ }
+ async json(endpoint){return JSON.parse((await this.collect(endpoint,2*1024*1024,'application/vnd.github+json')).toString('utf8'));}
+ bytes(endpoint,limit=65536){return this.collect(endpoint,limit,'application/octet-stream');}
+ async stream(endpoint){return(await this.request(endpoint,{accept:'application/octet-stream',timeout:30*60*1000})).body;}
+}
 class Updates extends EventEmitter{
- constructor(options){super();Object.assign(this,options);version(this.currentVersion);if(!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(this.repo||''))throw new Error('Geçersiz güncelleme deposu.');this.transport=options.transport||new GhTransport(this.ghPath);this.value={status:'idle',currentVersion:this.currentVersion,latestVersion:'',progress:0,checkedAt:null,notes:'',error:'',offer:false,noPublishedRelease:false,message:''};}
+ constructor(options){super();Object.assign(this,options);version(this.currentVersion);if(!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(this.repo||''))throw new Error('Geçersiz güncelleme deposu.');this.transport=options.transport||(this.mode==='public'?new PublicGitHub({fetch:options.fetch}):new GhTransport(this.ghPath));this.value={status:'idle',currentVersion:this.currentVersion,latestVersion:'',progress:0,checkedAt:null,notes:'',error:'',offer:false,noPublishedRelease:false,message:'',publicUpdates:this.mode==='public'||this.transport instanceof PublicGitHub};}
  state(){return{...this.value};}
  update(values){Object.assign(this.value,values);const state=this.state();this.emit('state',state);return state;}
  failure(error){return this.update({status:error.code==='AUTH_REQUIRED'?'auth-required':'error',error:safeError(error),offer:false});}
@@ -52,7 +80,7 @@ class Updates extends EventEmitter{
    await pipeline(await this.transport.stream(release.endpoint),meter,sync.createWriteStream(part,{flags:'wx'}));if(size!==manifest.size||hash.digest('hex')!==manifest.sha256)throw new Error('Güncelleme hash/boyut doğrulaması başarısız.');await fs.rename(part,target);part=null;this.archivePath=target;return this.update({status:'ready',progress:1,error:''});
   }catch(error){if(part)await fs.unlink(part).catch(()=>{});this.archivePath=null;return this.failure(error);}
  }
- login(){if(this.value.status==='installing')return Promise.resolve(this.state());if(this.loggingIn)return this.loggingIn;const work=(async()=>{this.update({status:'auth-required',error:'',loginCode:'',loginUrl:''});try{await this.transport.login(code=>this.update(code));this.update({loginCode:'',loginUrl:''});return await this.check({manual:true,source:'manual'});}catch(error){return this.failure(error);}})().finally(()=>{this.loggingIn=null;});this.loggingIn=work;return work;}
+ login(){if(this.value.status==='installing')return Promise.resolve(this.state());if(this.mode==='public'||this.transport instanceof PublicGitHub)return this.check({source:'manual'});if(this.loggingIn)return this.loggingIn;const work=(async()=>{this.update({status:'auth-required',error:'',loginCode:'',loginUrl:''});try{await this.transport.login(code=>this.update(code));this.update({loginCode:'',loginUrl:''});return await this.check({manual:true,source:'manual'});}catch(error){return this.failure(error);}})().finally(()=>{this.loggingIn=null;});this.loggingIn=work;return work;}
  prepareInstall(options={}){
   if(this.preparing)return this.preparing;
   const previous=this.state();let accept,decline;const shared=new Promise((resolve,reject)=>{accept=resolve;decline=reject;});this.preparing=shared;
@@ -67,4 +95,4 @@ class Updates extends EventEmitter{
   const job={schema:1,appRoot,cacheDir,archivePath:path.resolve(this.archivePath),sha256:manifest.sha256,size:manifest.size,version:manifest.version,parentPid,healthTimeoutMs,waitTimeoutMs};await fs.writeFile(jobFile,JSON.stringify(job,null,2),{flag:'wx'});this.update({status:'installing',offer:false});return{helperPath,args:['--job',jobFile],jobFile};
  }
 }
-module.exports={Updates,GhTransport,healthAckPath};
+module.exports={Updates,GhTransport,PublicGitHub,healthAckPath};

@@ -23,3 +23,55 @@ test('a missing or mismatched private repository remains an access error after l
 test('normal signed release checks clear the no-published-release flag',async t=>{const f=await fixture(t),json=f.transport.json;f.transport.json=async endpoint=>{if(endpoint.endsWith('/releases/latest')){const e=new Error('Not Found');e.httpStatus=404;throw e;}return{full_name:'bynkrn/klip',private:true};};await f.updates.check();f.transport.json=json;const state=await f.updates.check();assert.equal(state.status,'available');assert.equal(state.noPublishedRelease,false);assert.equal(state.message,'');});
 test('GitHub transport exposes HTTP status without leaking stderr credentials',async()=>{const transport=new api.GhTransport(process.execPath),{child,completed}=transport.command(['-e',"process.stderr.write('gh: Not Found (HTTP 404) ghp_FAKESECRET123');process.exit(1)"]);child.stdout.resume();await assert.rejects(completed,error=>{assert.equal(error.httpStatus,404);assert(!error.message.includes('FAKESECRET123'));return true;});});
 test('preparation cannot be interrupted by a late check, download or login request',async t=>{const f=await fixture(t);await fs.writeFile(path.join(f.dir,'installer.exe'),'dummy helper');let logins=0;f.transport.login=async()=>{logins++;};await f.updates.check();await f.updates.download();const preparing=f.updates.prepareInstall({parentPid:process.pid});const results=await Promise.allSettled([preparing,f.updates.check(),f.updates.download(),f.updates.login()]);assert.equal(results[0].status,'fulfilled');assert.equal(f.downloads,1);assert.equal(logins,0);assert.equal(f.updates.state().status,'installing');});
+
+test('shipped public configuration checks an unpublished repository without a GitHub login',async()=>{
+ const config=require('../src/update-config.json'),requests=[];
+ const updates=new api.Updates({...config,currentVersion:'0.3.1',fetch:async(url,options)=>{requests.push({url,options});return url.endsWith('/releases/latest')?Response.json({message:'Not Found'},{status:404}):Response.json({full_name:'bynkrn/klip',private:false});}});
+ const state=await updates.check({source:'startup'});
+ assert.equal(state.status,'current');assert.equal(state.noPublishedRelease,true);assert.equal(state.publicUpdates,true);assert.equal(state.error,'');assert.equal(state.offer,false);
+ assert.deepEqual(requests.map(r=>r.url),['https://api.github.com/repos/bynkrn/klip/releases/latest','https://api.github.com/repos/bynkrn/klip']);
+ for(const {options} of requests){assert.equal(options.redirect,'manual');assert.equal(options.credentials,'omit');assert.equal(new Headers(options.headers).get('authorization'),null);}
+ const states=[];updates.on('state',s=>states.push(s.status));assert.equal((await updates.login()).status,'current');assert(!states.includes('auth-required'));
+});
+
+test('public release assets follow GitHub HTTPS redirects and retain signed download validation',async t=>{
+ assert.equal(typeof api.PublicGitHub,'function');
+ const f=await fixture(t),requests=[],contentById={1:f.payload.bytes,2:Buffer.from(f.payload.signature),3:f.payload.content};
+ const transport=new api.PublicGitHub({fetch:async(url,options)=>{requests.push({url,options});if(url.endsWith('/releases/latest'))return Response.json({tag_name:'v0.4.0',draft:false,prerelease:false,body:'Public notes',assets:f.assets});const id=Number(url.split('/').pop());if(url.startsWith('https://api.github.com/'))return new Response(null,{status:302,headers:{location:'https://release-assets.githubusercontent.com/controlled-fixture/'+id}});assert(url.startsWith('https://release-assets.githubusercontent.com/controlled-fixture/'));return new Response(contentById[id]);}});
+ f.updates.transport=transport;assert.equal((await f.updates.check()).status,'available');assert.equal((await f.updates.download()).status,'ready');
+ assert.equal(await fs.readFile(path.join(f.dir,'updates','Ember-v0.4.0-win32-x64.zip'),'utf8'),'verified archive bytes');
+ for(const request of requests){assert.equal(request.options.redirect,'manual');assert.equal(request.options.credentials,'omit');assert.equal(new Headers(request.options.headers).get('authorization'),null);}
+ const archiveRequests=requests.length;assert.equal((await f.updates.download()).status,'ready');assert.equal(requests.length,archiveRequests);
+});
+
+test('public transport rejects non-GitHub, non-HTTPS and credential-bearing redirects before requesting them',async()=>{
+ assert.equal(typeof api.PublicGitHub,'function');
+ for(const location of ['http://release-assets.githubusercontent.com/a','https://api.github.com.evil.invalid/a','https://evil.invalid/a','https://user:password@api.github.com/a','https://api.github.com:444/a']){
+  let requests=0;const transport=new api.PublicGitHub({fetch:async()=>{requests++;return new Response(null,{status:302,headers:{location}});}});
+  await assert.rejects(transport.bytes('repos/bynkrn/klip/releases/assets/1'),/GitHub|HTTPS/);assert.equal(requests,1);
+ }
+});
+
+test('public transport bounds redirect loops, metadata and streamed asset text',async()=>{
+ assert.equal(typeof api.PublicGitHub,'function');
+ let requests=0;const looping=new api.PublicGitHub({fetch:async()=>{requests++;return new Response(null,{status:302,headers:{location:'https://api.github.com/repos/bynkrn/klip/releases/assets/1'}});}});
+ await assert.rejects(looping.bytes('repos/bynkrn/klip/releases/assets/1'),/yönlendirme|redirect/i);assert(requests<=6);
+ const huge=new api.PublicGitHub({fetch:async()=>new Response(Buffer.alloc(2*1024*1024+1))});await assert.rejects(huge.json('repos/bynkrn/klip/releases/latest'),/boyut/);
+ const streamed=new api.PublicGitHub({fetch:async()=>new Response(new ReadableStream({start(controller){controller.enqueue(Buffer.from('123'));controller.enqueue(Buffer.from('456'));controller.close();}}))});await assert.rejects(streamed.bytes('repos/bynkrn/klip/releases/assets/1',5),/boyut/);
+ const declared=new api.PublicGitHub({fetch:async()=>new Response('small',{headers:{'content-length':'1000'}})});await assert.rejects(declared.bytes('repos/bynkrn/klip/releases/assets/1',10),/boyut/);
+});
+
+test('public transport rejects external endpoints and exposes HTTP failures without reading response secrets',async()=>{
+ assert.equal(typeof api.PublicGitHub,'function');
+ let requests=0;const transport=new api.PublicGitHub({fetch:async()=>{requests++;return new Response('sensitive server response',{status:403});}});
+ await assert.rejects(transport.json('https://evil.invalid/'),/depo|endpoint|istek/i);assert.equal(requests,0);
+ await assert.rejects(transport.json('repos/bynkrn/klip/releases/latest'),error=>{assert.equal(error.httpStatus,403);assert(!error.message.includes('sensitive'));assert.notEqual(error.code,'AUTH_REQUIRED');return true;});
+});
+
+test('public asset streams cannot bypass signed size and hash checks',async t=>{
+ assert.equal(typeof api.PublicGitHub,'function');
+ for(const content of [Buffer.from('short'),Buffer.alloc(1000),Buffer.alloc(22,1)]){
+  const f=await fixture(t);f.updates.transport=new api.PublicGitHub({fetch:async url=>{if(url.endsWith('/releases/latest'))return Response.json({tag_name:'v0.4.0',draft:false,prerelease:false,assets:f.assets});return new Response(url.endsWith('/1')?f.payload.bytes:url.endsWith('/2')?f.payload.signature:content);}});
+  assert.equal((await f.updates.check()).status,'available');assert.equal((await f.updates.download()).status,'error');assert.equal((await fs.readdir(path.join(f.dir,'updates'))).length,0);
+ }
+});

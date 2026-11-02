@@ -1,12 +1,12 @@
 const {OBS}=require('./obs');
-const fs=require('node:fs/promises'),path=require('node:path'),{spawn}=require('node:child_process');
+const fs=require('node:fs/promises'),path=require('node:path'),crypto=require('node:crypto'),{spawn}=require('node:child_process');
 const {EventEmitter}=require('node:events');
 const {VideoSources}=require('./video-sources');
 const {resolveAudioSync,inputSyncOffset}=require('./audio-sync');
 const gameProcess=(exe,target)=>target?exe.toLowerCase()===target.toLowerCase():/^(VALORANT.*|cs2|quakelive.*|ddnet.*|r5apex|FortniteClient.*|Overwatch|dota2|RocketLeague|RainbowSix.*)\.exe$/i.test(exe);
 const gameName=exe=>/VALORANT/i.test(exe)?'Valorant':/^cs2/i.test(exe)?'Counter-Strike 2':/quakelive/i.test(exe)?'Quake Live':exe.replace(/\.exe$/i,'');
 class Capture extends EventEmitter{
- constructor(root,options={}){super();this.audioSyncProfile=options.audioSyncProfile||null;this.syncOffsets=resolveAudioSync(null,null);this.obs=new OBS(root);this.root=root;this.inputs=new Set();this.inputSettings=new Map();this.audio=[];this.lastGame='Masaüstü';this.focus=null;this.running=false;this.obs.on('ReplayBufferSaved',d=>this.emit('saved',d.savedReplayPath));this.obs.on('engine-error',e=>this.emit('warning',e));this.obs.on('engine-stopped',()=>{const wasRunning=this.running;this.running=false;clearInterval(this.audioTimer);clearInterval(this.videoTimer);clearInterval(this.syncTimer);this.watcher?.kill();const video=this.video;this.video=null;Promise.resolve(video?.stop()).catch(()=>{}).finally(()=>this.obs.close().catch(()=>{}));this.inputs.clear();this.inputSettings.clear();if(wasRunning)this.emit('warning','Kayıt motoru kapandı. Tampon durdu; yeniden başlatabilirsin.');});}
+ constructor(root,options={}){super();this.audioSyncProfile=options.audioSyncProfile||null;this.syncOffsets=resolveAudioSync(null,null);this.obs=new OBS(root);this.root=root;this.inputs=new Set();this.inputSettings=new Map();this.audio=[];this.audioSources=new Map();this.audioApps=new Map();this.audioFailures=new Map();this.audioWarningKeys=new Set();this.replaySnapshots=new Map();this.pendingAudioClaims=new Map();this.recoveryConfirmations=new Map();this.recoveryManifests=[];this.recoveryRequired=null;this.owner=this;this.dynamicAudio=false;this.audioEpoch=0;this.lastGame='Masaüstü';this.focus=null;this.running=false;this.obs.on('ReplayBufferRecoveryRequired',d=>{this.recoveryRequired=d.keepAlive?d:null;this.emit('recovery-required',d);this.emit('save-failed',new Error(d.message||'Tampon kurtarma bekliyor.'));this.refreshRecoveries().catch(()=>{});});this.obs.on('AudioSessionsChanged',()=>{if(this.running)this.refreshAudio().catch(e=>this.emit('warning',e.message));});this.obs.on('ReplayBufferSaved',d=>{this.lastSnapshot=d;this.replaySnapshots.set(d.savedReplayPath,d);while(this.replaySnapshots.size>16)this.replaySnapshots.delete(this.replaySnapshots.keys().next().value);if(d.automatic){this.automaticPreservation=this.listenerCount('automatic-replay')?new Promise((complete,fail)=>this.emit('automatic-replay',{detail:d,complete,fail})):Promise.resolve();this.automaticPreservation.catch(error=>this.emit('warning','Tampon geçmişi ham dosyada korundu: '+error.message));}else{if(this.dynamicAudio&&this.listenerCount('saved')){let resolve;const promise=new Promise(done=>resolve=done);this.pendingAudioClaims.set(d.savedReplayPath,{promise,resolve});}this.emit('saved',d.savedReplayPath);}});this.obs.on('AudioReplayWarning',d=>this.emit('warning',d.message||String(d)));this.obs.on('ReplayBufferSaveFailed',d=>this.emit('save-failed',new Error(d.message||'Klip kaydedilemedi.')));this.obs.on('engine-error',e=>this.emit('warning',e));this.obs.on('engine-stopped',()=>{this.audioEpoch++;const wasRunning=this.running;this.running=false;clearInterval(this.audioTimer);clearInterval(this.videoTimer);clearInterval(this.syncTimer);clearInterval(this.healthTimer);this.watcher?.kill();const video=this.video;this.video=null;Promise.allSettled([Promise.resolve(video?.stop()),this.automaticPreservation||Promise.resolve(),...Array.from(this.pendingAudioClaims.values(),claim=>claim.promise)]).then(()=>this.obs.close().catch(()=>{}));this.inputs.clear();this.inputSettings.clear();if(wasRunning)this.emit('warning','Kayıt motoru kapandı. Tampon durdu; yeniden başlatabilirsin.');});}
  async configure(c,bufferDir){await fs.mkdir(bufferDir,{recursive:true});}
  async refreshSyncProfile(){
   if(!this.audioSyncProfile)return true;if(this.syncChangePending)return false;
@@ -16,23 +16,23 @@ class Capture extends EventEmitter{
   const next=resolveAudioSync(this.audioSyncProfile,endpoint);this.syncOffsets=next;this.emit('audio-sync',{...next,name:next.matched?this.audioSyncProfile.name:endpoint.name,endpointId:endpoint.endpointId});return true;
  }
  async ensureInput(name,kind,settings,sceneItemEnabled=true){
-  const loopback=kind==='wasapi_output_capture'||kind==='wasapi_process_output_capture'||kind==='ember_system_audio_capture',offset=name==='Klip Ses Tarayıcı'?0:inputSyncOffset(kind,this.syncOffsets),key=JSON.stringify(settings)+'|'+offset;if(this.inputSettings.get(name)===key)return;
+  const loopback=kind==='wasapi_output_capture'||kind==='wasapi_process_output_capture'||kind==='ember_system_audio_capture'||kind==='ember_process_audio_capture',offset=name==='Klip Ses Tarayıcı'?0:inputSyncOffset(kind,this.syncOffsets),key=JSON.stringify(settings)+'|'+offset;if(this.inputSettings.get(name)===key)return;
   const o=this.obs;const list=await o.call('GetInputList');if(list.inputs.some(i=>i.inputName===name)){await o.call('SetInputSettings',{inputName:name,inputSettings:settings,overlay:true});if(loopback)await o.call('SetInputAudioSyncOffset',{inputName:name,inputAudioSyncOffset:offset});}
   else await o.call('CreateInput',{sceneName:'Klip',inputName:name,inputKind:kind,inputSettings:settings,sceneItemEnabled,...loopback?{inputAudioSyncOffset:offset}:{}});
   this.inputSettings.set(name,key);
  }
  async start(c,bufferDir){
-  if(this.running)return;
+  if(this.recoveryRequired?.keepAlive)throw new Error('Önce bekleyen tamponu kurtar.');if(this.running)return;
   if(this.obs.socket?.readyState===1)await this.obs.close();
-  this.focus=null;this.syncEndpointAtStart=null;this.syncChangePending=false;this.syncOffsets=resolveAudioSync(null,null);this.lastWindow=null;this.lastGame='Masaüstü';this.activeGameExe=c.targetExe||null;
-  await this.configure(c,bufferDir);await this.obs.launch(c,bufferDir);this.config=c;
+  this.audioEpoch++;this.lastSnapshot=null;this.replaySnapshots.clear();this.recoveryConfirmations.clear();this.recoveryRequired=null;this.pendingAudioClaims.clear();this.automaticPreservation=null;this.focus=null;this.syncEndpointAtStart=null;this.syncChangePending=false;this.syncOffsets=resolveAudioSync(null,null);this.lastWindow=null;this.lastGame='Masaüstü';this.activeGameExe=c.targetExe||null;
+  this.bufferDir=path.resolve(bufferDir);this.audioSnapshotRoot=path.join(this.bufferDir,'audio-snapshots');this.audioSignature=null;this.audioSources.clear();this.audioApps.clear();this.audioFailures.clear();await this.configure(c,bufferDir);await this.obs.launch(c,bufferDir);this.config=c;
   const o=this.obs;let scenes;for(let attempt=0;attempt<80;attempt++){try{scenes=await o.call('GetSceneList');break;}catch(e){if(attempt===79)throw e;await new Promise(r=>setTimeout(r,250));}}if(!scenes.scenes.some(s=>s.sceneName==='Klip'))await o.call('CreateScene',{sceneName:'Klip'});
   await o.call('SetCurrentProgramScene',{sceneName:'Klip'});
   for(const input of (await o.call('GetInputList')).inputs)if(!input.inputName.startsWith('Klip '))await o.call('SetInputMute',{inputName:input.inputName,inputMuted:true}).catch(()=>{});
   for(const input of (await o.call('GetInputList')).inputs)if(/^Klip Ses [2-5]$/.test(input.inputName))await o.call('SetInputMute',{inputName:input.inputName,inputMuted:true}).catch(()=>{});
   await o.call('SetStudioModeEnabled',{studioModeEnabled:false});
   await o.call('SetVideoSettings',{baseWidth:Number(c.resolution.split('x')[0]),baseHeight:Number(c.resolution.split('x')[1]),outputWidth:Number(c.resolution.split('x')[0]),outputHeight:Number(c.resolution.split('x')[1]),fpsNumerator:c.fps==='custom'?Number(c.customFps):Number(c.fps),fpsDenominator:1});
-  const kinds=(await o.call('GetInputKindList')).inputKinds;this.emit('diagnostic',{kinds});
+  const kinds=(await o.call('GetInputKindList')).inputKinds;this.dynamicAudio=kinds.includes('ember_process_audio_capture');this.emit('diagnostic',{kinds,dynamicAudio:this.dynamicAudio});await this.refreshRecoveries();
   await this.ensureInput('Klip Ekran','monitor_capture',{monitor:0,capture_cursor:c.cursor,method:0},c.mode!=='game');
   const monitors=await o.call('GetInputPropertiesListPropertyItems',{inputName:'Klip Ekran',propertyName:'monitor_id'});
   const monitor=monitors.propertyItems.find(m=>/0,\s*0|primary|birincil/i.test(m.itemName))||monitors.propertyItems[0];
@@ -50,8 +50,9 @@ class Capture extends EventEmitter{
   this.watcher=spawn(path.join(__dirname,'../tools/window-watcher.exe'),[],{windowsHide:true,stdio:['ignore','pipe','ignore']});let tail='';
   this.watcher.on('error',e=>this.emit('warning','Etkin pencere izlenemiyor: '+e.message));
   this.watcher.stdout.on('data',b=>{tail+=b.toString();const lines=tail.split(/\r?\n/);tail=lines.pop();for(const line of lines)try{this.onFocus(JSON.parse(line)).catch(e=>this.emit('warning',e.message));}catch{}});
-  this.audioTimer=setInterval(()=>this.refreshAudio().catch(e=>this.emit('warning',e.message)),12000);
+  this.audioTimer=setInterval(()=>this.refreshAudio().catch(e=>this.emit('warning',e.message)),this.dynamicAudio?1000:12000);
   if(this.audioSyncProfile)this.syncTimer=setInterval(()=>{if(this.running)this.refreshSyncProfile().catch(e=>{if(this.running)this.emit('warning',e.message);});},1000);
+  this.healthTimer=setInterval(()=>{if(this.running)this.obs.call('GetCaptureHealth').then(health=>{this.health=health;this.emit('health',health);}).catch(()=>{});},1000);
   this.videoTimer=setInterval(()=>this.video?.check().catch(e=>this.emit('warning',e.message)),500);
  }
  async updateVisibility(isGame){await this.video?.setFocus(isGame);}
@@ -67,10 +68,12 @@ class Capture extends EventEmitter{
   if(targetError)throw targetError;
  }
  async refreshAudio(){
-  if(this.audioRefreshing)return;this.audioRefreshing=true;
-  try{if(await this.refreshSyncProfile()===false)return;await this.refreshAudioInputs();}finally{this.audioRefreshing=false;}
+  if(this.recoveryRequired?.keepAlive)return;
+  if(this.audioRefreshing){this.audioRefreshPending=true;return;}this.audioRefreshing=true;
+  try{if(await this.refreshSyncProfile()===false)return;await this.refreshAudioInputs();}finally{this.audioRefreshing=false;if(this.audioRefreshPending&&this.running){this.audioRefreshPending=false;queueMicrotask(()=>this.refreshAudio().catch(e=>this.emit('warning',e.message)));}}
  }
  async refreshAudioInputs(){
+  if(this.dynamicAudio){const epoch=this.audioEpoch;await this.refreshDynamicAudio();if(epoch===this.audioEpoch)await this.ensureBaseAudio();return;}
   const o=this.obs;if(!this.inputs.has('Klip Ses Tarayıcı')){await this.ensureInput('Klip Ses Tarayıcı','wasapi_process_output_capture',{window:'',priority:2});await o.call('SetInputAudioTracks',{inputName:'Klip Ses Tarayıcı',inputAudioTracks:Object.fromEntries([1,2,3,4,5,6].map(n=>[n,false]))});this.inputs.add('Klip Ses Tarayıcı');}
   const probe=(await o.call('GetSceneItemList',{sceneName:'Klip'})).sceneItems.find(i=>i.sourceName==='Klip Ses Tarayıcı');if(probe)await o.call('SetSceneItemEnabled',{sceneName:'Klip',sceneItemId:probe.sceneItemId,sceneItemEnabled:false});
   const props=await o.call('GetInputPropertiesListPropertyItems',{inputName:'Klip Ses Tarayıcı',propertyName:'window'});const candidates=new Map();
@@ -84,7 +87,67 @@ class Capture extends EventEmitter{
   await this.ensureInput('Klip Mikrofon','wasapi_input_capture',{device_id:'default'});await o.call('SetInputAudioTracks',{inputName:'Klip Mikrofon',inputAudioTracks:{1:this.config.audioEnabled?.[1]!==false,2:false,3:false,4:false,5:false,6:true}});this.emit('audio',this.audio);
   for(const track of [1,2,3,4,5,6]){const assigned=track===1||track===6||this.config.autoAudio!==false&&this.audio.some(a=>a.track===track);const enabled=assigned&&this.config.audioEnabled?.[track]!==false;const name=track===1?'Klip Sistem Sesi':track===6?'Klip Mikrofon':'Klip Ses '+track;await o.call('SetInputMute',{inputName:name,inputMuted:!enabled}).catch(()=>{});}
  }
- async save(){if(!this.running)throw new Error('Önce tamponu başlat.');return new Promise((resolve,reject)=>{const fail=e=>{clearTimeout(timeout);this.off('saved',done);reject(e);};const done=file=>{clearTimeout(timeout);resolve(file);};const timeout=setTimeout(()=>fail(new Error('Klip kaydedilemedi')),20000);this.once('saved',done);this.obs.call('SaveReplayBuffer').catch(fail);});}
- async stop(){this.running=false;clearInterval(this.audioTimer);clearInterval(this.videoTimer);clearInterval(this.syncTimer);this.watcher?.kill();await this.video?.stop().catch(()=>{});this.video=null;await this.obs.close();this.inputs.clear();this.inputSettings.clear();}
+ async ensureBaseAudio(){
+  await this.ensureInput('Klip Sistem Sesi','ember_system_audio_capture',{target_process_id:process.pid});await this.obs.call('SetInputAudioTracks',{inputName:'Klip Sistem Sesi',inputAudioTracks:{1:true,2:false,3:false,4:false,5:false,6:false}});
+  await this.ensureInput('Klip Mikrofon','wasapi_input_capture',{device_id:'default'});await this.obs.call('SetInputAudioTracks',{inputName:'Klip Mikrofon',inputAudioTracks:{1:this.config.audioEnabled?.[1]!==false,2:false,3:false,4:false,5:false,6:true}});
+  for(const track of [1,6])await this.obs.call('SetInputMute',{inputName:track===1?'Klip Sistem Sesi':'Klip Mikrofon',inputMuted:this.config.audioEnabled?.[track]===false});
+ }
+ async refreshDynamicAudio(){
+  const epoch=this.audioEpoch;const result=await this.obs.call('ListAudioSessions',{excludedProcessId:process.pid}),seen=new Set(),now=Date.now();if(epoch!==this.audioEpoch)return;
+  for(const session of this.config.autoAudio===false?[]:result.sessions||[]){
+   const identity=String(session.exePath||session.id||session.name).toLowerCase(),id='app:'+crypto.createHash('sha256').update(identity).digest('hex').slice(0,16);
+   this.audioApps.set(id,{track:id,id,name:session.name||path.basename(session.exePath||'Uygulama'),exe:session.exePath,lastSeen:now});
+   for(const pid of session.roots||[session.processId]){if(!Number.isInteger(pid)||pid<=0||pid===process.pid)continue;const key=id+':'+pid;seen.add(key);if(this.audioSources.has(key)||now<(this.audioFailures.get(key)?.next||0))continue;
+    const inputName='Klip Uygulama '+pid;try{
+     await this.ensureInput(inputName,'ember_process_audio_capture',{target_process_id:pid});if(epoch!==this.audioEpoch)return;await this.obs.call('SetInputAudioTracks',{inputName,inputAudioTracks:Object.fromEntries([1,2,3,4,5,6].map(n=>[n,false]))});
+     await this.obs.call('AttachAudioReplay',{inputName,id,name:session.name||'Uygulama',processId:pid,retentionSeconds:Math.min(360,this.config.duration+60),bufferDir:path.join(this.bufferDir,'application-audio')});
+     if(epoch!==this.audioEpoch)return;this.audioSources.set(key,{inputName,id,pid});this.audioFailures.delete(key);
+    }catch(error){if(epoch!==this.audioEpoch)return;const previous=this.audioFailures.get(key),attempt=(previous?.attempt||0)+1;this.audioFailures.set(key,{attempt,next:now+Math.min(30000,2500*2**Math.min(attempt-1,4))});if(!previous)this.emit('warning',(session.name||'Uygulama')+' ayrı ses izi başlatılamadı; birleşik ses korunuyor: '+error.message);}
+   }
+  }
+  if(epoch!==this.audioEpoch)return;for(const [key,item]of this.audioSources)if(!seen.has(key)){await this.obs.call('DetachAudioReplay',{inputName:item.inputName});await this.obs.call('RemoveInput',{inputName:item.inputName});this.inputSettings.delete(item.inputName);this.audioSources.delete(key);}
+  for(const [id,app]of this.audioApps)if(now-app.lastSeen>(this.config.duration+60)*1000&&!Array.from(this.audioSources.values()).some(source=>source.id===id))this.audioApps.delete(id);
+  this.audio=Array.from(this.audioApps.values()).sort((a,b)=>a.name.localeCompare(b.name));const visible=this.audio.map(({track,id,name,exe})=>({track,id,name,exe})),signature=JSON.stringify(visible);if(signature!==this.audioSignature){this.audioSignature=signature;this.emit('audio',visible);}for(const key of this.audioFailures.keys())if(!seen.has(key))this.audioFailures.delete(key);
+  const warningKeys=new Set();for(const warning of result.warnings||[]){const message=typeof warning==='string'?warning:warning.message||JSON.stringify(warning);warningKeys.add(message);if(!this.audioWarningKeys.has(message))this.emit('warning',message);}this.audioWarningKeys=warningKeys;
+ }
+ async setAudioEnabled(track,enabled){
+  this.config.audioEnabled={...this.config.audioEnabled,[track]:enabled};if(this.dynamicAudio&&typeof track==='string')return;
+  await this.obs.call('SetInputMute',{inputName:track===1?'Klip Sistem Sesi':track===6?'Klip Mikrofon':'Klip Ses '+track,inputMuted:!enabled});
+ }
+ async refreshRecoveries(){
+  if(this.obs.ready){this.recoveryManifests=(await this.obs.call('ListRecoveryManifests')).manifests||[];}
+  else if(this.bufferDir){const files=await fs.readdir(this.bufferDir).catch(()=>[]);this.recoveryManifests=files.filter(name=>/^Ember-Recovery-\d+-\d+-\d+\.json$/.test(name)).map(name=>({manifest:path.join(this.bufferDir,name)}));}
+  this.emit('recoveries',this.recoveryManifests);return this.recoveryManifests;
+ }
+ async recoverReplays(){
+  if(!this.bufferDir||!this.config)throw new Error('Kurtarma klasörü hazır değil.');
+  if(!this.obs.ready){await this.obs.launch(this.config,this.bufferDir);const kinds=(await this.obs.call('GetInputKindList')).inputKinds;this.dynamicAudio=kinds.includes('ember_process_audio_capture');}
+  const manifests=await this.refreshRecoveries();for(const recovery of manifests){await this.obs.call('RecoverReplay',{manifest:recovery.manifest},150000);await this.automaticPreservation;}
+  await this.refreshRecoveries();return this.recoveryManifests;
+ }
+ async completeRecovery(original){
+  const owner=this.owner||this,detail=this.replaySnapshots.get(original)||this.lastSnapshot;
+  if(detail?.recoveryManifest){const key=detail.recoveryManifest;if(!owner.recoveryConfirmations.has(key)){const work=owner.obs.call('CompleteRecovery',{manifest:key}).catch(error=>{owner.recoveryConfirmations.delete(key);throw error;});owner.recoveryConfirmations.set(key,work);}await owner.recoveryConfirmations.get(key);}
+  owner.recoveryRequired=null;owner.emit('recovery-required',null);if(detail?.recoveryManifest)await owner.refreshRecoveries();
+ }
+ async snapshotAudio(original){
+  try{
+   const snapshot=this.replaySnapshots.get(original)||this.lastSnapshot;if(!snapshot?.replayStartMonotonicNs||!snapshot?.replayEndMonotonicNs)throw new Error('Ses izleri için video zaman aralığı doğrulanamadı.');
+   const start=BigInt(snapshot.replayStartMonotonicNs),end=BigInt(snapshot.replayEndMonotonicNs);if(end<=start||end-start>301000000000n)throw new Error('Geçersiz ses zaman aralığı.');
+   await fs.mkdir(this.audioSnapshotRoot,{recursive:true});const folder=path.join(this.audioSnapshotRoot,crypto.randomUUID());await fs.mkdir(folder);
+   if(snapshot.recovered)return{folder,tracks:[],warnings:['Kurtarılan kaydın birleşik sesi korundu; uygulama sesleri ayrı olarak kurtarılamadı.']};
+   const result=await this.obs.call('SnapshotAudioReplay',{snapshotId:snapshot.snapshotId,startNs:String(start),endNs:String(end),folder},120000);
+   return{...result,folder,tracks:this.config.autoAudio===false?[]:(result.tracks||[]).filter(track=>this.config.audioEnabled?.[track.id]!==false)};
+  }finally{const claim=this.pendingAudioClaims.get(original);claim?.resolve();this.pendingAudioClaims.delete(original);}
+ }
+ async save(){if(!this.running&&!this.recoveryRequired?.keepAlive)throw new Error('Önce tamponu başlat.');return new Promise((resolve,reject)=>{const fail=e=>{clearTimeout(timeout);this.off('saved',done);this.off('save-failed',fail);reject(e);};const done=file=>{clearTimeout(timeout);this.off('save-failed',fail);resolve(file);};const timeout=setTimeout(()=>fail(new Error('Klip kaydedilemedi')),130000);this.once('saved',done);this.once('save-failed',fail);this.obs.call('SaveReplayBuffer').catch(fail);});}
+ async stop({discardRecovery=false}={}){
+  if(this.recoveryRequired?.keepAlive&&!discardRecovery)throw new Error('Önce bekleyen tamponu kurtar.');
+  for(const claim of this.pendingAudioClaims.values())claim.resolve();this.pendingAudioClaims.clear();this.audioEpoch++;this.running=false;clearInterval(this.audioTimer);clearInterval(this.videoTimer);clearInterval(this.syncTimer);clearInterval(this.healthTimer);this.watcher?.kill();await this.video?.stop().catch(()=>{});this.video=null;
+  if(this.obs.ready)await this.obs.call('StopReplayBuffer',{},150000);
+  await this.automaticPreservation?.catch(()=>{});
+  if(this.recoveryRequired?.keepAlive&&!discardRecovery)throw new Error('Önce bekleyen tamponu kurtar.');
+  await this.obs.close();this.inputs.clear();this.inputSettings.clear();
+ }
 }
 module.exports={Capture};

@@ -30,7 +30,7 @@ $definition=Join-Path $buildDir 'obs.def'
 & (Join-Path $compilerDir 'lib.exe') /nologo /machine:x64 "/def:$definition" "/out:$(Join-Path $buildDir 'obs.lib')"
 if($LASTEXITCODE){throw 'Generating libobs import library failed.'}
 $output=Join-Path $projectDir 'tools\Ember.Capture.exe'
-& (Join-Path $compilerDir 'cl.exe') /nologo /std:c++17 /EHsc /MD /O2 /W3 /utf-8 /D_CRT_SECURE_NO_WARNINGS "/I$sourceDir" "/I$(Join-Path $sourceDir 'vendor\obs-33.0.1\libobs')" (Join-Path $sourceDir 'main.cpp') "/Fo:$(Join-Path $buildDir 'main.obj')" "/Fe:$output" /link /SUBSYSTEM:CONSOLE /INCREMENTAL:NO (Join-Path $buildDir 'obs.lib') ole32.lib uuid.lib
+& (Join-Path $compilerDir 'cl.exe') /nologo /std:c++17 /EHsc /MD /O2 /W3 /utf-8 /D_CRT_SECURE_NO_WARNINGS "/I$sourceDir" "/I$(Join-Path $sourceDir 'vendor\obs-33.0.1\libobs')" (Join-Path $sourceDir 'main.cpp') "/Fo:$(Join-Path $buildDir 'main.obj')" "/Fe:$output" /link /SUBSYSTEM:CONSOLE /INCREMENTAL:NO (Join-Path $buildDir 'obs.lib') ole32.lib uuid.lib user32.lib
 if($LASTEXITCODE){throw 'Building Ember.Capture failed.'}
 Copy-Item -LiteralPath $output -Destination (Join-Path $engineBin 'Ember.Capture.exe') -Force
 Write-Output "Built $output"

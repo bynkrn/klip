@@ -1,0 +1,16 @@
+#pragma once
+#include "packet-ring.hpp"
+#include "vendor/json.hpp"
+#include <fstream>
+#include <unordered_map>
+namespace ember_replay {
+using RecoveryJson=nlohmann::json;
+inline void writeCheckpoint(const std::filesystem::path &path,const Snapshot &snapshot,const RecoveryJson &codec,const RecoveryJson &identity){
+ RecoveryJson data={{"version",1},{"snapshot",identity},{"codec",codec},{"bytes",snapshot.bytes},{"files",RecoveryJson::array()},{"packets",RecoveryJson::array()}};std::unordered_map<Segment*,size_t> owners;
+ for(const auto &packet:snapshot.packets){auto inserted=owners.emplace(packet.segment.get(),owners.size());if(inserted.second){auto relative=std::filesystem::relative(packet.segment->path(),path.parent_path());data["files"].push_back({{"path",relative.generic_u8string()},{"bytes",packet.segment->size()}});packet.segment->preserveDiskFile();}const auto &p=packet.info;data["packets"].push_back({inserted.first->second,packet.offset,packet.size,p.pts,p.dts,p.sysDtsUsec,p.presentationNs,p.durationNs,p.timebaseNum,p.timebaseDen,p.track,p.video,p.keyframe});}
+ const auto text=data.dump();auto temporary=std::filesystem::path(path.wstring()+L".tmp");HANDLE file=CreateFileW(temporary.c_str(),GENERIC_WRITE,FILE_SHARE_READ,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL|FILE_FLAG_WRITE_THROUGH,nullptr);if(file==INVALID_HANDLE_VALUE)throw std::runtime_error("Cannot write replay recovery manifest; keep this capture session open");bool ok=true;size_t offset=0;while(offset<text.size()){DWORD wrote=0,part=(DWORD)std::min<size_t>(1048576,text.size()-offset);if(!WriteFile(file,text.data()+offset,part,&wrote,nullptr)||wrote!=part){ok=false;break;}offset+=wrote;}if(ok)ok=FlushFileBuffers(file)!=FALSE;CloseHandle(file);if(!ok||!MoveFileExW(temporary.c_str(),path.c_str(),MOVEFILE_WRITE_THROUGH|MOVEFILE_REPLACE_EXISTING))throw std::runtime_error("Cannot finalize replay recovery manifest; keep this capture session open");
+}
+inline RecoveryJson readCheckpoint(const std::filesystem::path &path){if(!path.is_absolute()||std::filesystem::file_size(path)>128*1048576ULL)throw std::runtime_error("Invalid replay recovery manifest");std::ifstream file(path,std::ios::binary);RecoveryJson data;file>>data;if(data.at("version")!=1||!data.at("packets").is_array()||data["packets"].empty()||data["packets"].size()>500000||data.at("files").size()>500000)throw std::runtime_error("Unsupported replay recovery manifest");return data;}
+inline std::filesystem::path checkpointPayload(const std::filesystem::path &manifest,const RecoveryJson &entry){auto relative=std::filesystem::u8path(entry.at("path").get<std::string>());if(relative.is_absolute())throw std::runtime_error("Recovery payload must be inside its journal directory");for(const auto &part:relative)if(part==L"..")throw std::runtime_error("Recovery payload is outside its journal directory");auto path=(manifest.parent_path()/relative).lexically_normal();if(std::filesystem::is_symlink(std::filesystem::symlink_status(path))||!std::filesystem::is_regular_file(path))throw std::runtime_error("Recovery payload is unavailable");return path;}
+inline void discardCheckpoint(const std::filesystem::path &manifest,const Snapshot &snapshot){for(const auto &packet:snapshot.packets)packet.segment->releaseDiskFilePreservation();std::error_code ignored;std::filesystem::remove(manifest,ignored);}
+}

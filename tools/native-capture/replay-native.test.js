@@ -1,0 +1,50 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path'),os=require('node:os'),{execFile}=require('node:child_process');
+const {OBS}=require('../../src/obs');
+const run=(name,args)=>new Promise((resolve,reject)=>execFile(path.resolve(__dirname,'../',name+'.exe'),args,{windowsHide:true,timeout:20000,maxBuffer:4*1024*1024},(error,stdout,stderr)=>error?reject(new Error(error.message+'\n'+stderr)):resolve(stdout)));
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+for(const storage of ['disk','ram'])test(`native ${storage} replay decodes without reencoding, preserves snapshots and continues`,{skip:process.platform!=='win32'||process.env.EMBER_NATIVE_REPLAY_TEST!=='1',timeout:30000},async()=>{
+ const folder=await fs.mkdtemp(path.join(os.tmpdir(),'ember-native-replay-'+storage+'-')),obs=new OBS(path.resolve(__dirname,'../../engine/obs')),errors=[];
+ obs.on('engine-error',error=>errors.push(error));
+ try{
+  const orphan=path.join(folder,'.Ember-4294967295-1-1.partial.mkv'),live=path.join(folder,`.Ember-${process.pid}-1-1.partial.mkv`);await fs.writeFile(orphan,'abandoned native mux');await fs.writeFile(live,'owned by a live process');
+  await obs.launch({resolution:'640x480',fps:'60',qualityMode:'quality',videoBitrate:60,storage,duration:2},folder);
+  await obs.call('CreateScene',{sceneName:'Synthetic replay test'});await obs.call('SetCurrentProgramScene',{sceneName:'Synthetic replay test'});await obs.call('StartReplayBuffer');await wait(2400);
+  const entries=await fs.readdir(folder),journals=entries.filter(name=>name.startsWith('.ember-ring-'));
+  assert.equal(journals.length,storage==='disk'?1:0);
+  if(storage==='disk'){const packets=await fs.readdir(path.join(folder,journals[0]));assert(packets.some(name=>name.endsWith('.packets')));}
+  const encoding=await obs.call('GetReplayEncodingSettings');assert.equal(encoding.encoderSettings.rate_control,'CQP');assert.equal(encoding.encoderSettings.cqp,12);assert.equal(encoding.encoderSettings.preset,'p5');
+  assert.equal(await fs.access(orphan).then(()=>true,()=>false),false);assert.equal(await fs.readFile(live,'utf8'),'owned by a live process');
+  async function save(){const pending=new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Replay save event timed out')),12000);obs.once('ReplayBufferSaved',event=>{clearTimeout(timer);resolve(event);});});const request=await obs.call('SaveReplayBuffer'),event=await pending;assert.equal(event.snapshotId,request.snapshotId);assert(BigInt(event.replayEndMonotonicNs)>BigInt(event.replayStartMonotonicNs));assert(BigInt(event.replayEndMonotonicNs)-BigInt(event.replayStartMonotonicNs)<=2000000000n);assert.equal(event.storage,storage);return event;}
+  const first=await save();await wait(2400);const second=await save();assert.notEqual(first.savedReplayPath,second.savedReplayPath);assert(BigInt(second.replayStartMonotonicNs)>BigInt(first.replayStartMonotonicNs));
+  const status=await obs.call('GetReplayBufferStatus');assert(status.outputActive);assert.equal(status.storage,storage);assert(status.liveBytes<=status.limitBytes);assert(status.retainedDurationSeconds<=2);
+  for(const event of [first,second]){const probe=JSON.parse(await run('ffprobe',['-v','error','-show_streams','-show_format','-of','json',event.savedReplayPath])),video=probe.streams.find(stream=>stream.codec_type==='video');assert.equal(video.codec_name,'h264');assert.equal(video.width,640);assert.equal(video.height,480);assert.equal(video.avg_frame_rate,'60/1');assert.equal(probe.streams.filter(stream=>stream.codec_type==='audio').length,6);assert(Number(probe.format.duration)>0.5&&Number(probe.format.duration)<=2.05);await run('ffmpeg',['-v','error','-xerror','-i',event.savedReplayPath,'-map','0:v:0','-map','0:a','-f','null','-']);}
+  assert.deepEqual(errors,[]);await obs.call('StopReplayBuffer');await obs.close();assert(!(await fs.readdir(folder)).some(name=>name.startsWith('.ember-ring-')));
+ }finally{await obs.close();await fs.rm(folder,{recursive:true,force:true});}
+});
+test('native RAM exhaustion finalizes retained history before reporting a stopped engine',{skip:process.platform!=='win32'||process.env.EMBER_NATIVE_REPLAY_TEST!=='1',timeout:25000},async()=>{
+ const folder=await fs.mkdtemp(path.join(os.tmpdir(),'ember-native-replay-limit-')),obs=new OBS(path.resolve(__dirname,'../../engine/obs')),order=[];let recoveryTimeout;
+ obs.on('ReplayBufferLimitReached',()=>order.push('limit'));obs.on('ReplayBufferSaved',event=>order.push(event.automatic?'saved':'manual'));obs.on('ReplayBufferStateChanged',event=>{if(!event.outputActive)order.push('stopped');});
+ try{
+  await obs.launch({resolution:'640x480',fps:'60',storage:'ram',duration:120,replayRamLimitMiB:0.015625},folder);await obs.call('CreateScene',{sceneName:'Silent cap test'});await obs.call('SetCurrentProgramScene',{sceneName:'Silent cap test'});
+  const recovery=new Promise((resolve,reject)=>{recoveryTimeout=setTimeout(()=>reject(new Error('No automatic limit recovery clip')),15000);obs.once('ReplayBufferSaved',event=>{clearTimeout(recoveryTimeout);resolve(event);});});recovery.catch(()=>{});
+  await obs.call('StartReplayBuffer');const saved=await recovery;assert.equal(saved.automatic,true);await wait(200);assert.deepEqual(order.slice(0,3),['limit','saved','stopped']);
+  const probe=JSON.parse(await run('ffprobe',['-v','error','-show_streams','-of','json',saved.savedReplayPath]));assert.equal(probe.streams.filter(stream=>stream.codec_type==='video').length,1);await run('ffmpeg',['-v','error','-xerror','-i',saved.savedReplayPath,'-map','0:v:0','-f','null','-']);
+ }finally{clearTimeout(recoveryTimeout);await obs.close();await fs.rm(folder,{recursive:true,force:true});}
+});
+test('disk automatic save preflight failure preserves decodable journal after engine close until explicit completion',{skip:process.platform!=='win32'||process.env.EMBER_NATIVE_REPLAY_TEST!=='1',timeout:30000},async()=>{
+ const folder=await fs.mkdtemp(path.join(os.tmpdir(),'ember-durable-recovery-')),obs=new OBS(path.resolve(__dirname,'../../engine/obs'));let timer;
+ try{
+  const stat=await fs.statfs(folder),reserve=Math.ceil(stat.bavail*stat.bsize/1048576)+1024;
+  await obs.launch({resolution:'640x480',fps:'60',storage:'disk',duration:120,replayDiskLimitMiB:0.015625,replaySaveReserveMiB:reserve},folder);await obs.call('CreateScene',{sceneName:'Durable recovery'});await obs.call('SetCurrentProgramScene',{sceneName:'Durable recovery'});
+  const held=new Promise((resolve,reject)=>{timer=setTimeout(()=>reject(new Error('No durable recovery checkpoint')),15000);obs.once('ReplayBufferRecoveryRequired',resolve);});held.catch(()=>{});await obs.call('StartReplayBuffer');const recovery=await held;clearTimeout(timer);assert.equal(recovery.keepAlive,false);assert.equal(recovery.historyRetained,true);assert.equal(recovery.applicationStemsRetained,false);assert(recovery.recoveryManifest);await obs.close();
+  const manifest=JSON.parse(await fs.readFile(recovery.recoveryManifest,'utf8'));assert(manifest.packets.length>0);for(const entry of manifest.files)assert((await fs.stat(path.join(folder,entry.path))).size>0);
+  await obs.launch({resolution:'640x480',fps:'60',storage:'disk',duration:120},folder);const listed=await obs.call('ListRecoveryManifests');assert(listed.manifests.some(item=>item.manifest===recovery.recoveryManifest));const saved=await obs.call('RecoverReplay',{manifest:recovery.recoveryManifest},25000);assert.equal(saved.recoveryManifest,recovery.recoveryManifest);await fs.access(recovery.recoveryManifest);
+  await run('ffmpeg',['-v','error','-xerror','-i',saved.savedReplayPath,'-map','0:v:0','-map','0:a','-f','null','-']);const probe=JSON.parse(await run('ffprobe',['-v','error','-show_streams','-of','json',saved.savedReplayPath]));assert.equal(probe.streams.filter(stream=>stream.codec_type==='audio').length,6);
+  await obs.call('CompleteRecovery',{manifest:recovery.recoveryManifest});assert.equal(await fs.access(recovery.recoveryManifest).then(()=>true,()=>false),false);for(const entry of manifest.files)assert.equal(await fs.access(path.join(folder,entry.path)).then(()=>true,()=>false),false);
+ }finally{clearTimeout(timer);await obs.close();await fs.rm(folder,{recursive:true,force:true});}
+});
+test('RAM save preflight failure keeps a stable frozen history alive for retry',{skip:process.platform!=='win32'||process.env.EMBER_NATIVE_REPLAY_TEST!=='1',timeout:25000},async()=>{
+ const folder=await fs.mkdtemp(path.join(os.tmpdir(),'ember-ram-recovery-')),obs=new OBS(path.resolve(__dirname,'../../engine/obs'));let timer,stopped=0;obs.on('engine-stopped',()=>stopped++);
+ try{const stat=await fs.statfs(folder),reserve=Math.ceil(stat.bavail*stat.bsize/1048576)+1024;await obs.launch({resolution:'640x480',fps:'60',storage:'ram',duration:120,replayRamLimitMiB:0.015625,replaySaveReserveMiB:reserve},folder);await obs.call('CreateScene',{sceneName:'Live RAM recovery'});await obs.call('SetCurrentProgramScene',{sceneName:'Live RAM recovery'});const recovery=new Promise((resolve,reject)=>{timer=setTimeout(()=>reject(new Error('No live recovery hold')),15000);obs.once('ReplayBufferRecoveryRequired',resolve);});recovery.catch(()=>{});await obs.call('StartReplayBuffer');const held=await recovery;clearTimeout(timer);assert.equal(held.keepAlive,true);assert.equal(held.historyRetained,true);assert(held.snapshotId);await wait(150);assert.equal(stopped,0);const before=await obs.call('GetCaptureHealth');assert(before.outputActive);assert.equal(before.journalAcceptingPackets,false);assert(before.retainedBytes>0);const retry=await obs.call('SaveReplayBuffer');assert.equal(retry.recoveryRequired,true);assert.equal(retry.snapshotId,held.snapshotId);assert.equal(retry.replayStartMonotonicNs,held.replayStartMonotonicNs);assert.equal(retry.replayEndMonotonicNs,held.replayEndMonotonicNs);assert.equal(stopped,0);
+ }finally{clearTimeout(timer);await obs.close();await fs.rm(folder,{recursive:true,force:true});}
+});

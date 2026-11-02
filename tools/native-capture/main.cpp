@@ -25,6 +25,7 @@
 #undef EXPORT
 #define EXPORT __declspec(dllimport)
 #include "obs.h"
+#include "source-health.hpp"
 
 using json=nlohmann::json;
 namespace fs=std::filesystem;
@@ -37,6 +38,8 @@ static void logMessage(int level,const char *format,va_list args,void*){if(level
 struct Data{obs_data_t *p;explicit Data(const json &value=json::object()):p(obs_data_create_from_json(value.dump().c_str())){if(!p)throw std::runtime_error("Invalid settings JSON");}~Data(){obs_data_release(p);}operator obs_data_t*()const{return p;}Data(const Data&)=delete;};
 static std::string value(const char *text){return text?text:"";}
 static void require(bool ok,const std::string &message){if(!ok)throw std::runtime_error(message);}
+#include "replay-output.hpp"
+#include "audio-replay.hpp"
 static std::string utf8(const wchar_t *text){if(!text)return{};int size=WideCharToMultiByte(CP_UTF8,0,text,-1,nullptr,0,nullptr,nullptr);if(size<=1)return{};std::string result(size,'\0');WideCharToMultiByte(CP_UTF8,0,text,-1,result.data(),size,nullptr,nullptr);result.pop_back();return result;}
 static json defaultAudioEndpointInfo(){
  using Microsoft::WRL::ComPtr;ComPtr<IMMDeviceEnumerator> enumerator;require(SUCCEEDED(CoCreateInstance(__uuidof(MMDeviceEnumerator),nullptr,CLSCTX_ALL,IID_PPV_ARGS(&enumerator))),"Cannot enumerate audio endpoints");ComPtr<IMMDevice> device;require(SUCCEEDED(enumerator->GetDefaultAudioEndpoint(eRender,eConsole,&device)),"Default audio output is unavailable");
@@ -55,15 +58,11 @@ class Engine{
  obs_output_t *replay=nullptr;
  obs_encoder_t *videoEncoder=nullptr;
  std::array<obs_encoder_t*,6> audioEncoders{};
+ ember_health::SourceHealth sourceHealth;
+ std::unique_ptr<ember_audio_replay::Manager> audioReplay;
  std::mutex stopMutex;
  std::condition_variable stopCondition;
  bool outputStopped=true;
- static void onSaved(void *opaque,calldata_t*){
-  auto &self=*static_cast<Engine*>(opaque);calldata_t data;calldata_init(&data);
-  if(self.replay&&proc_handler_call(obs_output_get_proc_handler(self.replay),"get_last_replay",&data)){
-   auto path=value(calldata_string(&data,"path"));if(!path.empty())event("ReplayBufferSaved",{{"savedReplayPath",path}});
-  }calldata_free(&data);
- }
  static void onStopped(void *opaque,calldata_t *data){
   auto &self=*static_cast<Engine*>(opaque);int code=(int)calldata_int(data,"code");
   {std::lock_guard<std::mutex> lock(self.stopMutex);self.outputStopped=true;}self.stopCondition.notify_all();
@@ -92,15 +91,16 @@ class Engine{
   videoEncoder=obs_video_encoder_create("obs_nvenc_h264_tex","Ember NVENC",videoSettings,nullptr);
   require(videoEncoder!=nullptr,"NVIDIA NVENC H.264 encoder is unavailable");obs_encoder_set_video(videoEncoder,obs_get_video());
   fprintf(stderr,"Ember replay encoding: %s\n",encoding.dump().c_str());
-  int duration=config.value("duration",120);
-  // Six AAC tracks total 1.536 Mbps. Size the manual-mode packet cap for the
-  // entire selected history, with room for muxing and rate-control variation.
-  int64_t maxSizeMiB=manual?(int64_t)std::ceil(duration*(config["videoBitrate"].get<double>()+1.536)*1000000.0/8.0*1.15/1048576.0):4096;
-  Data outputSettings({{"directory",buffer.u8string()},{"format","Ember-%CCYY-%MM-%DD-%hh-%mm-%ss"},{"extension","mkv"},{"allow_spaces",true},{"max_time_sec",duration},{"max_size_mb",maxSizeMiB}});
-  replay=obs_output_create("replay_buffer","Ember Replay",outputSettings,nullptr);require(replay!=nullptr,"Replay buffer output is unavailable");
+  int duration=config.value("duration",120);bool disk=config.value("storage",std::string("disk"))=="disk";
+  double maxSizeMiB=config.value(disk?"replayDiskLimitMiB":"replayRamLimitMiB",disk?65536.0:4096.0);
+  require(duration>=1&&duration<=300&&std::isfinite(maxSizeMiB)&&maxSizeMiB>=0.015625&&maxSizeMiB<=1048576,"Invalid replay duration/storage limit");
+  int64_t saveReserveMiB=config.value("replaySaveReserveMiB",64LL);require(saveReserveMiB>=0&&saveReserveMiB<=10485760,"Invalid replay save free-space reserve");
+  Data outputSettings({{"directory",buffer.u8string()},{"mux_helper",(root/"bin/64bit/obs-ffmpeg-mux.exe").u8string()},{"storage",disk?"disk":"ram"},{"max_time_sec",duration},{"max_size_mb",maxSizeMiB},{"max_size_bytes",(int64_t)std::ceil(maxSizeMiB*1048576.0)},{"min_free_mb",1024},{"save_min_free_mb",saveReserveMiB}});
+  replay=obs_output_create("ember_replay_journal","Ember Replay",outputSettings,nullptr);require(replay!=nullptr,"Replay journal output is unavailable");
+  ember_replay::Output::from(replay).setSnapshotObserver([this](const json &snapshot){if(audioReplay)audioReplay->pin(snapshot);},[this](const std::string &id){if(audioReplay)audioReplay->discard(id);});
   obs_output_set_video_encoder(replay,videoEncoder);
   for(size_t i=0;i<audioEncoders.size();++i){Data settings({{"bitrate",256}});auto name="Ember AAC "+std::to_string(i+1);audioEncoders[i]=obs_audio_encoder_create("ffmpeg_aac",name.c_str(),settings,i,nullptr);require(audioEncoders[i]!=nullptr,"AAC encoder is unavailable");obs_encoder_set_audio(audioEncoders[i],obs_get_audio());obs_output_set_audio_encoder(replay,audioEncoders[i],i);}
-  signal_handler_t *signals=obs_output_get_signal_handler(replay);signal_handler_connect(signals,"saved",onSaved,this);signal_handler_connect(signals,"stop",onStopped,this);
+  signal_handler_connect(obs_output_get_signal_handler(replay),"stop",onStopped,this);
  }
  void prepareVisibleDisplays(){
   for(auto &entry:inputs){auto source=entry.second;if(value(obs_source_get_id(source))!="monitor_capture"||!obs_source_showing(source))continue;
@@ -134,13 +134,14 @@ public:
   auto resolution=config.value("resolution",std::string("1920x1080"));auto split=resolution.find('x');require(split!=std::string::npos,"Invalid resolution");
   unsigned fps=config.value("fps",std::string("60"))=="custom"?config.value("customFps",90):std::stoul(config.value("fps",std::string("60")));
   videoSettings({{"baseWidth",std::stoul(resolution.substr(0,split))},{"baseHeight",std::stoul(resolution.substr(split+1))},{"fpsNumerator",fps}});
-  for(auto name:{"win-capture","win-wasapi","obs-nvenc","obs-ffmpeg"})loadModule(name);ember_audio::registerSource();obs_post_load_modules();
+  for(auto name:{"win-capture","win-wasapi","obs-nvenc","obs-ffmpeg"})loadModule(name);ember_audio::registerSource();ember_replay::Output::registerType();obs_post_load_modules();audioReplay=std::make_unique<ember_audio_replay::Manager>(buffer);
  }
  void shutdown(){
   if(!initialized)return;stopOutput();
-  if(replay){signal_handler_disconnect(obs_output_get_signal_handler(replay),"saved",onSaved,this);signal_handler_disconnect(obs_output_get_signal_handler(replay),"stop",onStopped,this);obs_output_release(replay);replay=nullptr;}
+  if(replay){signal_handler_disconnect(obs_output_get_signal_handler(replay),"stop",onStopped,this);obs_output_release(replay);replay=nullptr;}
+  audioReplay.reset();
   if(videoEncoder){obs_encoder_release(videoEncoder);videoEncoder=nullptr;}for(auto &encoder:audioEncoders)if(encoder){obs_encoder_release(encoder);encoder=nullptr;}
-  obs_set_output_source(0,nullptr);for(auto &entry:scenes)obs_scene_release(entry.second);scenes.clear();for(auto &entry:inputs)obs_source_release(entry.second);inputs.clear();
+  sourceHealth.clear();obs_set_output_source(0,nullptr);for(auto &entry:scenes)obs_scene_release(entry.second);scenes.clear();for(auto &entry:inputs)obs_source_release(entry.second);inputs.clear();
   obs_shutdown();initialized=false;
  }
  json call(const std::string &type,const json &data){
@@ -148,6 +149,19 @@ public:
   if(type=="Close"){shutdown();return json::object();}
   if(type=="GetDefaultAudioEndpointInfo")return defaultAudioEndpointInfo();
   require(initialized,"Capture engine is not initialized");
+  if(type=="ListRecoveryManifests")return ember_replay::Output::listRecoveries(buffer);
+  if(type=="RecoverReplay")return ember_replay::Output::recover(data,root/"bin/64bit/obs-ffmpeg-mux.exe");
+  if(type=="CompleteRecovery")return ember_replay::Output::completeRecovery(data);
+  if(type=="ListAudioSessions")return audioReplay->list(data.value("excludedProcessId",0u));
+  if(type=="AttachAudioReplay")return audioReplay->attach(input(data),data);
+  if(type=="DetachAudioReplay"){audioReplay->detach(input(data));return json::object();}
+  if(type=="ClearAudioReplay"){audioReplay->clear();return json::object();}
+  if(type=="SnapshotAudioReplay")return audioReplay->snapshot(data);
+  if(type=="RemoveInput"){
+   auto source=input(data);audioReplay->detach(source);sourceHealth.reset(source);std::vector<obs_sceneitem_t*> items;
+   for(const auto &entry:scenes){struct Search {obs_source_t *source;std::vector<obs_sceneitem_t*> *items;}search{source,&items};obs_scene_enum_items(entry.second,[](obs_scene_t*,obs_sceneitem_t *item,void *opaque){auto &search=*static_cast<Search*>(opaque);if(obs_sceneitem_get_source(item)==search.source){obs_sceneitem_addref(item);search.items->push_back(item);}return true;},&search);}
+   for(auto *item:items){obs_sceneitem_remove(item);obs_sceneitem_release(item);}inputs.erase(data.at("inputName").get<std::string>());obs_source_release(source);return json::object();
+  }
   if(type=="GetSceneList"){json list=json::array();for(auto &entry:scenes)list.push_back({{"sceneName",entry.first}});return{{"scenes",list}};}
   if(type=="CreateScene"){auto name=data.at("sceneName").get<std::string>();require(!scenes.count(name),"Scene already exists");auto created=obs_scene_create(name.c_str());require(created!=nullptr,"Cannot create scene");scenes[name]=created;return json::object();}
   if(type=="SetCurrentProgramScene"){obs_set_output_source(0,obs_scene_get_source(scene(data)));return json::object();}
@@ -156,17 +170,24 @@ public:
   if(type=="CreateInput"){
    auto name=data.at("inputName").get<std::string>(),kind=data.at("inputKind").get<std::string>();require(!inputs.count(name),"Input already exists");
    auto actualSettings=data.value("inputSettings",json::object());double initialOffset=data.value("inputAudioSyncOffset",0.0);require(std::isfinite(initialOffset)&&initialOffset>=-2000&&initialOffset<=2000,"Invalid initial audio sync offset");
-   if(kind=="ember_system_audio_capture")actualSettings["__ember_initial_sync_offset_ns"]=(int64_t)std::llround(initialOffset*1000000.0);
-   auto initialSettings=actualSettings;bool staged=initialOffset!=0&&kind!="ember_system_audio_capture";
+   const bool processAudio=kind=="ember_system_audio_capture"||kind=="ember_process_audio_capture";
+   if(processAudio)actualSettings["__ember_initial_sync_offset_ns"]=(int64_t)std::llround(initialOffset*1000000.0);
+   auto initialSettings=actualSettings;bool staged=initialOffset!=0&&!processAudio;
    if(staged){require(kind=="wasapi_output_capture"||kind=="wasapi_process_output_capture","Initial calibration is supported only for output audio capture");if(kind=="wasapi_output_capture")initialSettings["device_id"]="__klip_unbound_audio_endpoint__";else initialSettings["window"]="";}
-   Data settings(initialSettings);if(kind=="ember_system_audio_capture")ember_audio::creationError.clear();auto source=obs_source_create(kind.c_str(),name.c_str(),settings,nullptr);require(source!=nullptr,"Cannot create input: "+kind);
-   if(kind=="ember_system_audio_capture"&&!ember_audio::creationError.empty()){auto error=ember_audio::creationError;obs_source_release(source);throw std::runtime_error("Cannot create Ember audio exclusion: "+error);}
+   Data settings(initialSettings);if(processAudio)ember_audio::creationError.clear();auto source=obs_source_create(kind.c_str(),name.c_str(),settings,nullptr);require(source!=nullptr,"Cannot create input: "+kind);
+   if(processAudio&&!ember_audio::creationError.empty()){auto error=ember_audio::creationError;obs_source_release(source);throw std::runtime_error("Cannot create Ember process audio capture: "+error);}
    if(staged){obs_source_set_sync_offset(source,(int64_t)std::llround(initialOffset*1000000.0));Data actual(actualSettings);obs_source_update(source,actual);}
    auto added=obs_scene_add(scene(data),source);if(!added){obs_source_release(source);throw std::runtime_error("Cannot add source to scene");}inputs[name]=source;
    obs_sceneitem_set_scale_filter(added,OBS_SCALE_LANCZOS);
    obs_sceneitem_set_visible(added,data.value("sceneItemEnabled",true));return{{"sceneItemId",obs_sceneitem_get_id(added)}};
   }
-  if(type=="SetInputSettings"){auto source=input(data);Data patch(data.at("inputSettings"));if(data.value("overlay",true)){obs_data_t *settings=obs_source_get_settings(source);obs_data_apply(settings,patch);obs_source_update(source,settings);obs_data_release(settings);}else obs_source_update(source,patch);return json::object();}
+  if(type=="GetInputSourceHealth")return sourceHealth.query(input(data));
+  if(type=="RecreateInput"){
+   auto old=input(data);auto kind=value(obs_source_get_id(old));require(kind=="game_capture"||kind=="window_capture","Only game/window capture can be recreated");auto name=data.at("inputName").get<std::string>();auto owner=scene(data);auto oldItem=obs_scene_find_source(owner,name.c_str());require(oldItem!=nullptr,"Capture scene item is unavailable");
+   obs_transform_info transform{};obs_sceneitem_get_info2(oldItem,&transform);obs_sceneitem_crop crop{};obs_sceneitem_get_crop(oldItem,&crop);auto order=obs_sceneitem_get_order_position(oldItem);bool visible=obs_sceneitem_visible(oldItem);auto filter=obs_sceneitem_get_scale_filter(oldItem);obs_data_t *settings=obs_source_get_settings(old);
+   sourceHealth.reset(old);obs_sceneitem_remove(oldItem);obs_source_release(old);inputs.erase(name);auto source=obs_source_create(kind.c_str(),name.c_str(),settings,nullptr);obs_data_release(settings);require(source!=nullptr,"Cannot recreate capture source");auto added=obs_scene_add(owner,source);if(!added){obs_source_release(source);throw std::runtime_error("Cannot restore capture scene item");}inputs[name]=source;obs_sceneitem_set_info2(added,&transform);obs_sceneitem_set_crop(added,&crop);obs_sceneitem_set_scale_filter(added,filter);obs_sceneitem_set_order_position(added,order);obs_sceneitem_set_visible(added,visible);return{{"sceneItemId",obs_sceneitem_get_id(added)}};
+  }
+  if(type=="SetInputSettings"){auto source=input(data);sourceHealth.reset(source);Data patch(data.at("inputSettings"));if(data.value("overlay",true)){obs_data_t *settings=obs_source_get_settings(source);obs_data_apply(settings,patch);obs_source_update(source,settings);obs_data_release(settings);}else obs_source_update(source,patch);return json::object();}
   if(type=="GetInputSettings"){auto source=input(data);auto settings=obs_source_get_settings(source);auto result=json::parse(obs_data_get_json(settings));obs_data_release(settings);return{{"inputSettings",result},{"inputKind",obs_source_get_id(source)}};}
   if(type=="GetInputPropertiesListPropertyItems"){
    auto source=input(data);auto properties=obs_source_properties(source);require(properties!=nullptr,"Input has no properties");auto name=data.at("propertyName").get<std::string>();auto property=obs_properties_get(properties,name.c_str());
@@ -195,14 +216,14 @@ public:
   if(type=="GetVideoSettings"){obs_video_info info{};obs_get_video_info(&info);return{{"baseWidth",info.base_width},{"baseHeight",info.base_height},{"outputWidth",info.output_width},{"outputHeight",info.output_height},{"fpsNumerator",info.fps_num},{"fpsDenominator",info.fps_den}};}
   if(type=="StartReplayBuffer"){prepareVisibleDisplays();prepareReplay();require(!obs_output_active(replay),"Replay buffer already running");{std::lock_guard<std::mutex> lock(stopMutex);outputStopped=false;}if(!obs_output_start(replay)){std::lock_guard<std::mutex> lock(stopMutex);outputStopped=true;throw std::runtime_error("Cannot start NVENC replay buffer: "+value(obs_output_get_last_error(replay))+" "+value(obs_encoder_get_last_error(videoEncoder)));}return json::object();}
   if(type=="StopReplayBuffer"){stopOutput();return json::object();}
-  if(type=="GetReplayBufferStatus")return{{"outputActive",replay&&obs_output_active(replay)}};
+  if(type=="GetReplayBufferStatus"||type=="GetCaptureHealth")return replay?ember_replay::Output::from(replay).status():json{{"outputActive",false}};
   if(type=="GetReplayEncodingSettings"){
    prepareReplay();auto settings=obs_encoder_get_settings(videoEncoder);auto effective=json::parse(obs_data_get_json(settings));obs_data_release(settings);
-   auto outputSettings=obs_output_get_settings(replay);auto limitMiB=obs_data_get_int(outputSettings,"max_size_mb");obs_data_release(outputSettings);
+   auto outputSettings=obs_output_get_settings(replay);auto limitMiB=obs_data_get_double(outputSettings,"max_size_mb");obs_data_release(outputSettings);
    obs_video_info info{};obs_get_video_info(&info);
    return{{"qualityMode",config["qualityMode"]},{"videoBitrate",config["videoBitrate"]},{"encoderId",obs_encoder_get_id(videoEncoder)},{"encoderSettings",effective},{"active",obs_output_active(replay)},{"outputScaleFilter",info.scale_type==OBS_SCALE_LANCZOS?"lanczos":"other"},{"replayBufferLimitMiB",limitMiB}};
   }
-  if(type=="SaveReplayBuffer"){require(replay&&obs_output_active(replay),"Replay buffer is not running");calldata_t args;calldata_init(&args);bool ok=proc_handler_call(obs_output_get_proc_handler(replay),"save",&args);calldata_free(&args);require(ok,"Cannot request replay save");return json::object();}
+  if(type=="SaveReplayBuffer"){require(replay!=nullptr,"Replay buffer is not running");return ember_replay::Output::from(replay).save();}
   throw std::runtime_error("Unsupported capture request: "+type);
  }
 };

@@ -8,7 +8,7 @@ function parseRange(header,size){
 async function fileResponse(file,request){
  if(!['GET','HEAD'].includes(request.method))return new Response(null,{status:405});
  let stat;try{stat=await fs.promises.stat(file);}catch{return new Response(null,{status:404});}if(!stat.isFile())return new Response(null,{status:404});
- const type={'.mp4':'video/mp4','.m4a':'audio/mp4','.aac':'audio/aac','.mkv':'video/x-matroska','.webm':'video/webm','.mov':'video/quicktime','.jpg':'image/jpeg','.png':'image/png'}[path.extname(file).toLowerCase()]||'application/octet-stream';
+ const type={'.mp4':'video/mp4','.m4a':'audio/mp4','.aac':'audio/aac','.wav':'audio/wav','.mp3':'audio/mpeg','.ogg':'audio/ogg','.mkv':'video/x-matroska','.webm':'video/webm','.mov':'video/quicktime','.jpg':'image/jpeg','.png':'image/png'}[path.extname(file).toLowerCase()]||'application/octet-stream';
  const headers={'Content-Type':type,'Accept-Ranges':'bytes'},requested=request.method==='GET'?request.headers.get('range'):null;
  const range=requested?parseRange(requested,stat.size):{start:0,end:stat.size-1};
  if(!range)return new Response(null,{status:416,headers:{...headers,'Content-Range':'bytes */'+stat.size}});

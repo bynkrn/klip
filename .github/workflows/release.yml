@@ -42,6 +42,10 @@ jobs:
       - name: Verify Source And Interfaces
         shell: pwsh
         run: |
+          # Deterministic native storage/IPC tests need no GPU or audio endpoint.
+          ./tools/native-capture/test-packet-ring.ps1
+          ./tools/native-capture/test-audio-journal.ps1
+          ./tools/native-capture/test-source-health.ps1
           node tools/build-ui.js
           # Native PowerShell/Electron fixtures share limited Windows runner resources.
           node --test --test-concurrency=1 tests/*.test.js tools/native-capture/adapter.test.js
