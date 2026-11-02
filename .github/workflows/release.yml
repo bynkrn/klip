@@ -39,6 +39,11 @@ jobs:
         run: |
           ./tools/native-capture/build.ps1
           ./tools/build-updater.ps1
+      - name: Prepare Installer Compiler
+        shell: pwsh
+        run: |
+          $compiler=./tools/installer/bootstrap.ps1
+          "NSIS_PATH=$compiler" >> $env:GITHUB_ENV
       - name: Verify Source And Interfaces
         shell: pwsh
         run: |
@@ -60,16 +65,17 @@ jobs:
         shell: pwsh
         run: |
           ./tools/package.ps1
+          ./tools/build-installer.ps1 -SkipRuntimeBuild -RuntimeDirectory dist/Ember-win32-x64
           $version=(Get-Content package.json -Raw | ConvertFrom-Json).version
           Compress-Archive -LiteralPath dist/Ember-win32-x64 -DestinationPath "dist/Ember-v$version-win32-x64.zip"
           node tools/sign-release.js --archive "dist/Ember-v$version-win32-x64.zip" --version $version
         env:
           KLIP_SIGNING_PRIVATE_KEY: ${{ secrets.KLIP_SIGNING_PRIVATE_KEY }}
-      - name: Publish Private Release
+      - name: Publish Release
         if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
         run: |
           $version=(Get-Content package.json -Raw | ConvertFrom-Json).version
-          ./tools/github/gh.exe release create $env:GITHUB_REF_NAME "dist/Ember-v$version-win32-x64.zip" dist/ember-update.json dist/ember-update.sig --repo $env:GITHUB_REPOSITORY --verify-tag --title "Ember $version" --generate-notes
+          ./tools/github/gh.exe release create $env:GITHUB_REF_NAME "dist/Ember-v$version-win32-x64.zip" "dist/Ember-$version-Setup.exe" "dist/Ember-$version-Setup.exe.sha256" dist/ember-update.json dist/ember-update.sig --repo $env:GITHUB_REPOSITORY --verify-tag --title "Ember $version" --generate-notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

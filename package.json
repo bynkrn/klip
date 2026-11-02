@@ -1,7 +1,7 @@
 {
   "name": "ember-capture",
   "productName": "Ember",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "main": "src/main.js",
   "scripts": {

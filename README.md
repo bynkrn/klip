@@ -2,7 +2,17 @@
 
 Windows için yerel replay buffer uygulaması. Sunset arayüzü; tek satır kayıt kontrolleri, ikon gezinme, kart/liste kütüphanesi ve Türkçe/English seçimi içerir. Ürün adı ve yazı logosu **Ember**; mevcut simge korunur.
 
-Kaynak deposu [bynkrn/klip](https://github.com/bynkrn/klip) herkese açıktır. Henüz yayımlanmış bir Release veya arkadaşlara gönderilmeye hazır ZIP/kurulum paketi yoktur. Mevcut çalışma kişisel yerel uygulama ve kaynak koduyla sınırlıdır.
+Kaynak deposu [bynkrn/klip](https://github.com/bynkrn/klip) herkese açıktır. Windows x64 kurulum dosyası `tools/build-installer.ps1` ile oluşturulur; henüz GitHub Release yayımlanmamıştır.
+
+## Kurulum
+
+`dist/Ember-0.6.1-Setup.exe` tek başına gönderilebilir. Kurulum ve uygulama dili Türkçe/English seçilir; Windows ile başlatma, Windows açılışında tepside başlatma, otomatik tampon ve masaüstü kısayolu sorulur. Kalan ayarlar uygulamada yapılır. Windows ile başlatma ve otomatik tampon varsayılan açıktır.
+
+Kurulum yalnız mevcut kullanıcıya, yönetici izni gerektirmeden `%LOCALAPPDATA%/Programs/Ember` altına yapılır. Seçilen dört tercih ilk açılışta uygulanır; sonraki açılışlar uygulamadan değiştirilen tercihleri sıfırlamaz. Yeniden kurulumdaki yeni seçimler uygulanırken diğer kayıt ayarları ve klipler korunur. Kurulum veya kaldırma sırasında Ember açıksa tepsiden güvenli biçimde çıkılması istenir; süreçler zorla sonlandırılmaz.
+
+Kaldırma yalnız paket dosyalarını ve oluşturduğu kısayolları temizler; `%APPDATA%/Ember`, kayıt klasörleri ve sonradan eklenen ilgisiz dosyalar korunur. Her sürümün yeni kaldırma programı güncelleme ZIP’ine de dahil edilir; uygulama içinden güncellenince Windows kaldırma desteği ve dosya listesi güncel kalır. Bildirim için kişisel içe aktarılan Medal dosyası, cihaz ses senkron profili veya kullanıcı ayarları pakete dahil edilmez. Windows yayıncı imzası yapılandırılmadığı için ilk çalıştırmada Windows uyarısı çıkabilir; uygulama güncellemeleri ayrıca kriptografik imzayla doğrulanır.
+
+Derleme: `./tools/build-installer.ps1`. Taşınabilir NSIS 3.12 derleyicisi resmî SourceForge indirmesinden SHA256 doğrulamasıyla yalnız `tools/build-deps` içine açılır. Canlı yerel uygulamayı değiştirmemek için ayrı `dist/installer-runtime` kullanılır. Açık bir `v<sürüm>` etiketiyle başlatılan gelecek GitHub Release’leri setup dosyasını da içerir; branch push’u Release yayımlamaz.
 
 ## Kullanım
 
