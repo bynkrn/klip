@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <deque>
@@ -14,6 +15,7 @@
 // Encoded payloads stay in their selected storage. Snapshots pin segment owners,
 // never duplicate the history, and may read while the capture appends/expires.
 namespace ember_replay {
+inline uint32_t checksum(const uint8_t *data,size_t size){static const auto table=[](){std::array<uint32_t,256> t{};for(uint32_t i=0;i<256;++i){auto c=i;for(int n=0;n<8;++n)c=(c>>1)^((c&1)?0xedb88320U:0);t[i]=c;}return t;}();uint32_t c=~0U;for(size_t i=0;i<size;++i)c=table[(c^data[i])&255]^(c>>8);return ~c;}
 enum class Storage {Ram,Disk};
 struct PacketInfo {
  int64_t pts=0,dts=0,sysDtsUsec=0,presentationNs=0,durationNs=0;
@@ -22,15 +24,17 @@ struct PacketInfo {
  bool video=false,keyframe=false;
 };
 struct Ledger {std::atomic<uint64_t> bytes{0};};
+inline uint64_t processCreatedAt(HANDLE process){FILETIME created{},exit{},kernel{},user{};if(!GetProcessTimes(process,&created,&exit,&kernel,&user))return 0;return (uint64_t(created.dwHighDateTime)<<32)|created.dwLowDateTime;}
+inline bool journalOwnerDead(const std::wstring &name){auto dash=name.find(L'-',12);if(dash==std::wstring::npos)return false;uint64_t pid=0,created=0;try{pid=std::stoull(name.substr(12,dash-12));if(std::count(name.begin()+12,name.end(),L'-')>=3)created=std::stoull(name.substr(name.rfind(L'-')+1));}catch(...){return false;}if(!pid||pid>MAXDWORD)return false;HANDLE owner=OpenProcess(SYNCHRONIZE|PROCESS_QUERY_LIMITED_INFORMATION,FALSE,(DWORD)pid);if(!owner)return GetLastError()==ERROR_INVALID_PARAMETER;const auto actual=processCreatedAt(owner);bool dead=WaitForSingleObject(owner,0)==WAIT_OBJECT_0||(created&&actual&&created!=actual);CloseHandle(owner);return dead;}
 struct Session {
  std::filesystem::path folder;
  std::mutex preserveMutex;size_t preservedFiles=0;
  explicit Session(const std::filesystem::path &root){
   // A process crash can leave transient manual-delete files. Reclaim only our
   // dead-owner directories without a durable recovery marker; never recurse.
-  std::error_code scanError;for(const auto &entry:std::filesystem::directory_iterator(root,scanError)){const auto name=entry.path().filename().wstring();if(name.rfind(L".ember-ring-",0)!=0||(GetFileAttributesW(entry.path().c_str())&FILE_ATTRIBUTE_REPARSE_POINT)||std::filesystem::exists(entry.path()/L".preserve"))continue;auto dash=name.find(L'-',12);if(dash==std::wstring::npos)continue;DWORD pid=0;try{auto number=std::stoull(name.substr(12,dash-12));if(!number||number>MAXDWORD)continue;pid=(DWORD)number;}catch(...){continue;}HANDLE owner=OpenProcess(SYNCHRONIZE,FALSE,pid);bool dead=false;if(owner){dead=WaitForSingleObject(owner,0)==WAIT_OBJECT_0;CloseHandle(owner);}else dead=GetLastError()==ERROR_INVALID_PARAMETER;if(!dead)continue;std::vector<std::filesystem::path> files;bool owned=true;for(const auto &file:std::filesystem::directory_iterator(entry.path(),scanError)){auto stem=file.path().stem().wstring();if(file.path().extension()!=L".packets"||stem.empty()||stem.find_first_not_of(L"0123456789")!=std::wstring::npos||(GetFileAttributesW(file.path().c_str())&FILE_ATTRIBUTE_REPARSE_POINT)){owned=false;break;}files.push_back(file.path());}if(!owned||scanError)continue;for(const auto &file:files)std::filesystem::remove(file,scanError);std::filesystem::remove(entry.path(),scanError);}
+  std::error_code scanError;for(const auto &entry:std::filesystem::directory_iterator(root,scanError)){const auto name=entry.path().filename().wstring();if(name.rfind(L".ember-ring-",0)!=0||(GetFileAttributesW(entry.path().c_str())&FILE_ATTRIBUTE_REPARSE_POINT)||std::filesystem::exists(entry.path()/L".preserve"))continue;bool dead=journalOwnerDead(name);if(!dead)continue;std::vector<std::filesystem::path> files;bool owned=true;for(const auto &file:std::filesystem::directory_iterator(entry.path(),scanError)){auto stem=file.path().stem().wstring();if(file.path().extension()!=L".packets"||stem.empty()||stem.find_first_not_of(L"0123456789")!=std::wstring::npos||(GetFileAttributesW(file.path().c_str())&FILE_ATTRIBUTE_REPARSE_POINT)){owned=false;break;}files.push_back(file.path());}if(!owned||scanError)continue;for(const auto &file:files)std::filesystem::remove(file,scanError);std::filesystem::remove(entry.path(),scanError);}
   static std::atomic<uint64_t> serial{0};
-  for(int attempt=0;attempt<32;++attempt){folder=root/(L".ember-ring-"+std::to_wstring(GetCurrentProcessId())+L"-"+std::to_wstring(GetTickCount64())+L"-"+std::to_wstring(++serial));if(std::filesystem::create_directory(folder))return;}
+  for(int attempt=0;attempt<32;++attempt){folder=root/(L".ember-ring-"+std::to_wstring(GetCurrentProcessId())+L"-"+std::to_wstring(GetTickCount64())+L"-"+std::to_wstring(++serial)+L"-"+std::to_wstring(processCreatedAt(GetCurrentProcess())));if(std::filesystem::create_directory(folder))return;}
   throw std::runtime_error("Cannot create private replay journal");
  }
  ~Session(){std::error_code error;std::filesystem::remove(folder,error);}
@@ -45,10 +49,10 @@ class Segment {
  HANDLE handle=INVALID_HANDLE_VALUE;
  std::vector<std::vector<uint8_t>> memory;
  uint64_t bytes=0;
- bool preserved=false;
+ size_t preserved=0;uint64_t flushedBytes=0;
  mutable std::mutex io;
 public:
- struct Record {PacketInfo info;uint64_t offset;uint32_t size;};
+ struct Record {PacketInfo info;uint64_t offset;uint32_t size;uint32_t checksum;};
  std::vector<Record> records;
  int64_t startNs;
  Segment(Storage mode,std::shared_ptr<Ledger> count,std::shared_ptr<Session> owner,uint64_t sequence,int64_t start):storage(mode),ledger(std::move(count)),session(std::move(owner)),startNs(start){
@@ -57,9 +61,9 @@ public:
  ~Segment(){if(handle!=INVALID_HANDLE_VALUE){CloseHandle(handle);if(!preserved){std::error_code ignored;std::filesystem::remove(file,ignored);}}ledger->bytes.fetch_sub(bytes);}
  Segment(const Segment&)=delete;
  const std::filesystem::path &path()const{return file;}
- uint64_t size()const{return bytes;}
- void preserveDiskFile(){std::lock_guard<std::mutex> lock(io);if(storage!=Storage::Disk)throw std::runtime_error("RAM replay cannot be retained without free disk space");if(!preserved){session->retain();preserved=true;}if(!FlushFileBuffers(handle))throw std::runtime_error("Cannot flush retained replay data for recovery");}
- void releaseDiskFilePreservation(){std::lock_guard<std::mutex> lock(io);if(preserved){preserved=false;session->release();}}
+ uint64_t size()const{std::lock_guard<std::mutex> lock(io);return bytes;}
+ void preserveDiskFile(){std::lock_guard<std::mutex> lock(io);if(storage!=Storage::Disk)throw std::runtime_error("RAM replay cannot be retained without free disk space");if(flushedBytes!=bytes){if(!FlushFileBuffers(handle))throw std::runtime_error("Cannot flush retained replay data for recovery");flushedBytes=bytes;}if(!preserved)session->retain();++preserved;}
+ void releaseDiskFilePreservation(){std::lock_guard<std::mutex> lock(io);if(preserved&&!--preserved)session->release();}
  std::vector<Record> copyRecords()const{std::lock_guard<std::mutex> lock(io);return records;}
  void append(const PacketInfo &info,const uint8_t *data,uint32_t size){
   std::lock_guard<std::mutex> lock(io);
@@ -68,7 +72,7 @@ public:
   if(storage==Storage::Ram&&memory.size()==memory.capacity())memory.reserve(std::max<size_t>(16,memory.capacity()*2));
   if(storage==Storage::Disk){LARGE_INTEGER offset{};offset.QuadPart=bytes;DWORD written=0;if(!SetFilePointerEx(handle,offset,nullptr,FILE_BEGIN)||!WriteFile(handle,data,size,&written,nullptr)||written!=size)throw std::runtime_error("Replay journal write failed; check free disk space");}
   else memory.emplace_back(data,data+size);
-  records.push_back({info,bytes,size});bytes+=size;ledger->bytes.fetch_add(size);
+  records.push_back({info,bytes,size,checksum(data,size)});bytes+=size;ledger->bytes.fetch_add(size);
  }
  std::vector<uint8_t> read(uint64_t offset,uint32_t count)const{
   std::lock_guard<std::mutex> lock(io);if(offset>bytes||count>bytes-offset)throw std::runtime_error("Replay snapshot packet is outside its segment");
@@ -78,7 +82,7 @@ public:
   return result;
  }
 };
-struct PacketRef {PacketInfo info;uint64_t offset;uint32_t size;std::shared_ptr<Segment> segment;};
+struct PacketRef {PacketInfo info;uint64_t offset;uint32_t size;std::shared_ptr<Segment> segment;uint32_t checksum=0;};
 struct Snapshot {
  int64_t startNs=0,endNs=0;
  uint64_t bytes=0;
@@ -119,18 +123,18 @@ public:
   segments.back()->append(info,data,(uint32_t)count);retained+=count;++packetCount;
   if(info.video)lastEndNs=std::max(lastEndNs,info.presentationNs+info.durationNs);
  }
- Snapshot snapshot()const{
+ Snapshot snapshot(bool completedOnly=false)const{
   std::lock_guard<std::mutex> lock(mutex);Snapshot result;if(!lastEndNs)throw std::runtime_error("Replay history has no video frames yet");
   result.packets.reserve((size_t)packetCount);
-  const int64_t cutoff=lastEndNs-durationNs;
-  for(const auto &segment:segments){if(segment->startNs<cutoff)continue;if(!result.startNs)result.startNs=segment->startNs;for(const auto &record:segment->records){
+  const int64_t end=completedOnly?segments.back()->startNs:lastEndNs,cutoff=end-durationNs;
+  for(const auto &segment:segments){if(segment->startNs<cutoff||segment->startNs>=end)continue;if(!result.startNs)result.startNs=segment->startNs;for(const auto &record:segment->records){
     // Audio can straddle the boundary by one AAC frame; retain only samples
     // whose presentation starts inside the exact video window.
-    if(record.info.presentationNs<result.startNs||record.info.presentationNs>=lastEndNs)continue;
-    result.packets.push_back({record.info,record.offset,record.size,segment});result.bytes+=record.size;
+    if(record.info.presentationNs<result.startNs||record.info.presentationNs>=end)continue;
+    result.packets.push_back({record.info,record.offset,record.size,segment,record.checksum});result.bytes+=record.size;
    }}
   if(result.packets.empty()||!result.packets.front().info.video||!result.packets.front().info.keyframe)throw std::runtime_error("Replay has not reached a usable keyframe inside the selected duration");
-  result.endNs=lastEndNs;return result;
+  result.endNs=end;return result;
  }
  uint64_t liveBytes()const{return ledger->bytes.load();}
  uint64_t retainedBytes()const{std::lock_guard<std::mutex> lock(mutex);return retained;}

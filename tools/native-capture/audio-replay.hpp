@@ -1,5 +1,6 @@
 #pragma once
 #include "audio-journal.hpp"
+#include "replay-checkpoint.hpp"
 #include "audio-tree-policy.hpp"
 #include <audiopolicy.h>
 #include <tlhelp32.h>
@@ -102,6 +103,12 @@ public:
   const auto id=snapshot.at("snapshotId").get<std::string>();const auto start=timestamp(snapshot,"replayStartMonotonicNs"),end=timestamp(snapshot,"replayEndMonotonicNs");std::lock_guard<std::mutex> lock(mutex);auto existing=frozen.find(id);if(existing!=frozen.end()){require(existing->second.start==start&&existing->second.end==end,"Pinned replay window cannot change during retry");return;}if(frozen.size()>=32){const std::string message="Too many unclaimed application audio snapshots; combined audio is retained";if(pinErrors.size()>=32)pinErrors.erase(pinErrors.begin());pinErrors[id]=message;event("AudioReplayWarning",{{"snapshotId",id},{"message",message}});return;}FrozenWindow window{start,end,{}};for(const auto &entry:journals)window.apps.push_back({entry.first,entry.second.name,entry.second.journal,entry.second.journal->pin(start,end),entry.second.group,rootIds(entry.second)});frozen[id]=std::move(window);
  }
  void discard(const std::string &id){std::lock_guard<std::mutex> lock(mutex);frozen.erase(id);pinErrors.erase(id);}
+ ember_replay::DurableAudio checkpoint(int64_t start,int64_t end){
+  std::vector<FrozenApp> apps;{std::lock_guard<std::mutex> lock(mutex);for(const auto &entry:journals)apps.push_back({entry.first,entry.second.name,entry.second.journal,{},entry.second.group,rootIds(entry.second)});}
+  ember_replay::DurableAudio result;result.payload.startNs=start;result.payload.endNs=end;
+  for(const auto &app:apps){try{std::string warning;auto payload=app.journal->durable(start,end,&warning);if(!warning.empty())result.warnings.push_back({{"id",app.id},{"name",app.name},{"message",warning+"; only durably available application samples were checkpointed"}});if(payload.packets.empty())continue;const auto first=std::min_element(payload.packets.begin(),payload.packets.end(),[](const auto &a,const auto &b){return a.info.presentationNs<b.info.presentationNs;})->info.presentationNs;const auto index=(uint32_t)result.tracks.size();result.tracks.push_back({{"id",app.id},{"name",app.name},{"sourceStartMonotonicNs",std::to_string(first)},{"sourceOffsetNs",std::to_string(first-start)},{"videoOffsetNs","0"},{"videoStartMonotonicNs",std::to_string(start)},{"sampleRate",48000},{"channels",2}});for(auto &packet:payload.packets){packet.info.track=index;result.payload.packets.push_back(std::move(packet));}result.payload.bytes+=payload.bytes;}catch(const std::exception &e){result.warnings.push_back({{"id",app.id},{"name",app.name},{"message",e.what()}});}}
+  return result;
+ }
  json snapshot(const json &data){
   const auto start=timestamp(data,"startNs"),end=timestamp(data,"endNs");require(end>start&&end-start<=301000000000LL,"Invalid application audio snapshot window");auto folder=std::filesystem::u8path(data.at("folder").get<std::string>());require(folder.is_absolute(),"Absolute application audio snapshot folder required");std::filesystem::create_directories(folder);json tracks=json::array(),warnings=json::array();size_t index=0;
   try{auto current=list(lastExcluded);warnings=current.value("warnings",json::array());}catch(const std::exception &e){warnings.push_back(std::string("Application process-tree isolation could not be verified; combined audio is retained: ")+e.what());discard(data.value("snapshotId",std::string()));return{{"snapshotId",data.value("snapshotId",std::string())},{"folder",folder.u8string()},{"tracks",tracks},{"warnings",warnings}};}

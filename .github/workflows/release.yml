@@ -51,9 +51,10 @@ jobs:
           ./tools/native-capture/test-packet-ring.ps1
           ./tools/native-capture/test-audio-journal.ps1
           ./tools/native-capture/test-source-health.ps1
+          ./tools/native-capture/build-recovery-test.ps1
           node tools/build-ui.js
           # Native PowerShell/Electron fixtures share limited Windows runner resources.
-          node --test --test-concurrency=1 tests/*.test.js tools/native-capture/adapter.test.js
+          node --test --test-concurrency=1 tests/*.test.js tools/native-capture/adapter.test.js tools/native-capture/durable-recovery.test.js
       # Branch pushes/manual checks never make a distributable or publish assets.
       # A matching explicit version tag is the deliberate release trigger.
       - name: Validate Release Version

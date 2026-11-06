@@ -5,10 +5,19 @@ function audioSelection(clip,tracks){
  if(combined&&indexes.includes(combined.index)&&indexes.length>1)throw new Error('Birleşik ses ve ayrı ses izleri birlikte seçilemez.');
  return indexes;
 }
-function audioOutput(clip,tracks,volumes={}){
+function audioOutput(clip,tracks,volumes={},{alignTimeline=false}={}){
  const indexes=audioSelection(clip,tracks),name=i=>clip.audio?.find(t=>t.index===i)?.name||'Ses '+(i+1);
  if(!volumes||typeof volumes!=='object'||Array.isArray(volumes)||Object.entries(volumes).some(([index,gain])=>!/^\d+$/.test(index)||Number(index)>=clip.tracks||typeof gain!=='number'||!Number.isFinite(gain)||gain<0||gain>1))throw new Error('Geçersiz ses seviyesi.');
  const gain=i=>volumes[i]??1;
+ if(alignTimeline&&indexes.length){
+  // amix combines samples, not independent stream start offsets. Pad each
+  // decoded stream to the common video timeline before mixing or splitting.
+  const input=i=>'[0:a:'+i+']aresample=async=1:first_pts=0,volume='+gain(i);
+  if(indexes.length===1)return{args:['-filter_complex',input(indexes[0])+'[klipaudio]','-map','[klipaudio]'],names:indexes.map(name)};
+  const stems=indexes.map(i=>input(i)+',asplit=2[klipmix'+i+'][klipstem'+i+']');
+  const filter=stems.join(';')+';'+indexes.map(i=>'[klipmix'+i+']').join('')+'amix=inputs='+indexes.length+':duration=longest:dropout_transition=0:normalize=0,alimiter=limit=0.98:level=false:latency=true[klipmix]';
+  return{args:['-filter_complex',filter,'-map','[klipmix]',...indexes.flatMap(i=>['-map','[klipstem'+i+']'])],names:['Birleşik ses (seçilenler)',...indexes.map(name)]};
+ }
  if(indexes.some(i=>gain(i)!==1)){
   if(indexes.length===1)return{args:['-filter_complex','[0:a:'+indexes[0]+']volume='+gain(indexes[0])+'[klipaudio]','-map','[klipaudio]'],names:indexes.map(name)};
   const stems=indexes.map(i=>'[0:a:'+i+']volume='+gain(i)+',asplit=2[klipmix'+i+'][klipstem'+i+']');
@@ -22,25 +31,29 @@ function audioOutput(clip,tracks,volumes={}){
  return{args:['-filter_complex',filter,'-map','[klipmix]',...indexes.flatMap(i=>['-map','0:a:'+i])],names:['Birleşik ses (seçilenler)',...indexes.map(name)]};
 }
 class EditorAudio{
- constructor({cacheDir,resolve,asset,revoke,run}){Object.assign(this,{cacheDir,resolve,asset,revoke,run});this.cache=new Map();this.pending=new Map();this.active=0;this.waiters=[];}
+ constructor({cacheDir,resolve,asset,revoke,run}){Object.assign(this,{cacheDir,resolve,asset,revoke,run});this.cache=new Map();this.pending=new Map();this.active=0;this.waiters=[];this.epochs=new Map();}
  async acquire(){if(this.active<2){this.active++;return;}await new Promise(resolve=>this.waiters.push(resolve));}
  release(){if(this.waiters.length)this.waiters.shift()();else this.active--;}
- invalidate(id){for(const [key,row]of this.cache)if(row.id===id){this.revoke(row.url);this.cache.delete(key);}}
+ invalidate(id){this.epochs.set(id,(this.epochs.get(id)||0)+1);for(const [key,row]of this.cache)if(row.id===id){this.revoke(row.url);this.cache.delete(key);}}
  async get({id,tracks}){
   const clip=this.resolve(id);if(!clip)throw new Error('Klip bulunamadı.');const indexes=audioSelection(clip,tracks);
   return Promise.all(indexes.map(index=>this.track(clip,index)));
  }
  async track(clip,index){
   const stat=await fs.stat(clip.file);if(!stat.isFile())throw new Error('Ses dosyası bulunamadı.');
-  const key=clip.file+'|'+stat.mtimeMs+'|'+stat.size+'|audio|'+index;if(this.cache.has(key))return this.cache.get(key).result;if(this.pending.has(key))return this.pending.get(key);
+  const signature=stat=>[stat.mtimeMs,stat.size,stat.dev,stat.ino].join('|'),epoch=this.epochs.get(clip.id)||0,current=()=>{const known=this.resolve(clip.id);if(!known||known.file!==clip.file||(this.epochs.get(clip.id)||0)!==epoch)throw new Error('Klip kaynağı değişti.');};current();
+  const key=clip.file+'|'+signature(stat)+'|audio-aligned-v2|'+index;if(this.cache.has(key))return this.cache.get(key).result;if(this.pending.has(key))return this.pending.get(key);
   const job=(async()=>{await this.acquire();let temp;try{
-   const hash=crypto.createHash('sha256').update(key).digest('hex'),target=path.join(this.cacheDir,hash+'.m4a');await fs.mkdir(this.cacheDir,{recursive:true});
+   current();const hash=crypto.createHash('sha256').update(key).digest('hex'),target=path.join(this.cacheDir,hash+'.m4a');await fs.mkdir(this.cacheDir,{recursive:true});
    try{await fs.access(target);}catch{
-    temp=path.join(this.cacheDir,crypto.randomUUID()+'.m4a');const stream=clip.audio.find(a=>a.index===index),encoding=stream?.codec==='aac'?['-c:a','copy']:['-c:a','aac','-b:a','256k'];
-    await this.run('ffmpeg',['-v','error','-n','-i',clip.file,'-map','0:a:'+index,'-vn','-sn','-dn',...encoding,'-movflags','+faststart',temp]);
+    // A standalone copied AAC stream loses its offset from the video. Encode
+    // only this preview, adding real leading silence on the common timeline.
+    temp=path.join(this.cacheDir,crypto.randomUUID()+'.m4a');
+    await this.run('ffmpeg',['-nostdin','-v','error','-n','-i',clip.file,'-map','0:a:'+index,'-vn','-sn','-dn','-af','aresample=async=1:first_pts=0','-c:a','aac','-b:a','256k','-movflags','+faststart',temp]);
+    current();if(signature(await fs.stat(clip.file))!==signature(stat))throw new Error('Klip kaynağı değişti.');
     await fs.link(temp,target).catch(error=>{if(error.code!=='EEXIST')throw error;});
    }
-   if(!this.resolve(clip.id))throw new Error('Klip bulunamadı.');
+   current();if(signature(await fs.stat(clip.file))!==signature(stat))throw new Error('Klip kaynağı değişti.');
    const url=this.asset(target),result={index,name:clip.audio.find(a=>a.index===index)?.name||'Ses '+(index+1),url};this.cache.set(key,{id:clip.id,url,result});return result;
   }finally{if(temp)await fs.unlink(temp).catch(()=>{});this.release();}})();
   this.pending.set(key,job);try{return await job;}finally{this.pending.delete(key);}

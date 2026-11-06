@@ -50,7 +50,7 @@ class VideoSources {
  async ready(id){
   if(id==null)return false;
   const inputName=id===this.gameId?'Klip Oyun':'Klip Pencere';
-  const health=await this.obs.call('GetInputSourceHealth',{inputName});this.health.set(id,health);
+  const health=await this.obs.call('GetInputSourceHealth',{inputName});health.observedAt=this.now();this.health.set(id,health);
   if(!(health.sourceWidth>0&&health.sourceHeight>0)||health.suspended||health.hookStatusAvailable&&!health.hooked||health.freshnessRequired&&!health.transportObserved)return false;
   // A producer advancing the transport proves new frames even in a static menu.
   // Stock OBS exposes no equivalent counter for shared textures or WGC. Those

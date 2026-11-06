@@ -3,7 +3,7 @@ const {OBS}=require('../../src/obs');
 const run=(name,args)=>new Promise((resolve,reject)=>execFile(path.resolve(__dirname,'../',name+'.exe'),args,{windowsHide:true,timeout:20000,maxBuffer:4*1024*1024},(error,stdout,stderr)=>error?reject(new Error(error.message+'\n'+stderr)):resolve(stdout)));
 const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 for(const storage of ['disk','ram'])test(`native ${storage} replay decodes without reencoding, preserves snapshots and continues`,{skip:process.platform!=='win32'||process.env.EMBER_NATIVE_REPLAY_TEST!=='1',timeout:30000},async()=>{
- const folder=await fs.mkdtemp(path.join(os.tmpdir(),'ember-native-replay-'+storage+'-')),obs=new OBS(path.resolve(__dirname,'../../engine/obs')),errors=[];
+ const folder=await fs.mkdtemp(path.join(os.tmpdir(),'ember-native-replay-'+storage+'-')),obs=new OBS(path.resolve(process.env.EMBER_NATIVE_RUNTIME||path.join(__dirname,'../../engine/obs'))),errors=[];
  obs.on('engine-error',error=>errors.push(error));
  try{
   const orphan=path.join(folder,'.Ember-4294967295-1-1.partial.mkv'),live=path.join(folder,`.Ember-${process.pid}-1-1.partial.mkv`);await fs.writeFile(orphan,'abandoned native mux');await fs.writeFile(live,'owned by a live process');
@@ -22,7 +22,7 @@ for(const storage of ['disk','ram'])test(`native ${storage} replay decodes witho
  }finally{await obs.close();await fs.rm(folder,{recursive:true,force:true});}
 });
 test('native RAM exhaustion finalizes retained history before reporting a stopped engine',{skip:process.platform!=='win32'||process.env.EMBER_NATIVE_REPLAY_TEST!=='1',timeout:25000},async()=>{
- const folder=await fs.mkdtemp(path.join(os.tmpdir(),'ember-native-replay-limit-')),obs=new OBS(path.resolve(__dirname,'../../engine/obs')),order=[];let recoveryTimeout;
+ const folder=await fs.mkdtemp(path.join(os.tmpdir(),'ember-native-replay-limit-')),obs=new OBS(path.resolve(process.env.EMBER_NATIVE_RUNTIME||path.join(__dirname,'../../engine/obs'))),order=[];let recoveryTimeout;
  obs.on('ReplayBufferLimitReached',()=>order.push('limit'));obs.on('ReplayBufferSaved',event=>order.push(event.automatic?'saved':'manual'));obs.on('ReplayBufferStateChanged',event=>{if(!event.outputActive)order.push('stopped');});
  try{
   await obs.launch({resolution:'640x480',fps:'60',storage:'ram',duration:120,replayRamLimitMiB:0.015625},folder);await obs.call('CreateScene',{sceneName:'Silent cap test'});await obs.call('SetCurrentProgramScene',{sceneName:'Silent cap test'});
@@ -32,11 +32,11 @@ test('native RAM exhaustion finalizes retained history before reporting a stoppe
  }finally{clearTimeout(recoveryTimeout);await obs.close();await fs.rm(folder,{recursive:true,force:true});}
 });
 test('disk automatic save preflight failure preserves decodable journal after engine close until explicit completion',{skip:process.platform!=='win32'||process.env.EMBER_NATIVE_REPLAY_TEST!=='1',timeout:30000},async()=>{
- const folder=await fs.mkdtemp(path.join(os.tmpdir(),'ember-durable-recovery-')),obs=new OBS(path.resolve(__dirname,'../../engine/obs'));let timer;
+ const folder=await fs.mkdtemp(path.join(os.tmpdir(),'ember-durable-recovery-')),obs=new OBS(path.resolve(process.env.EMBER_NATIVE_RUNTIME||path.join(__dirname,'../../engine/obs')));let timer;
  try{
   const stat=await fs.statfs(folder),reserve=Math.ceil(stat.bavail*stat.bsize/1048576)+1024;
   await obs.launch({resolution:'640x480',fps:'60',storage:'disk',duration:120,replayDiskLimitMiB:0.015625,replaySaveReserveMiB:reserve},folder);await obs.call('CreateScene',{sceneName:'Durable recovery'});await obs.call('SetCurrentProgramScene',{sceneName:'Durable recovery'});
-  const held=new Promise((resolve,reject)=>{timer=setTimeout(()=>reject(new Error('No durable recovery checkpoint')),15000);obs.once('ReplayBufferRecoveryRequired',resolve);});held.catch(()=>{});await obs.call('StartReplayBuffer');const recovery=await held;clearTimeout(timer);assert.equal(recovery.keepAlive,false);assert.equal(recovery.historyRetained,true);assert.equal(recovery.applicationStemsRetained,false);assert(recovery.recoveryManifest);await obs.close();
+  const held=new Promise((resolve,reject)=>{timer=setTimeout(()=>reject(new Error('No durable recovery checkpoint')),15000);obs.once('ReplayBufferRecoveryRequired',resolve);});held.catch(()=>{});await obs.call('StartReplayBuffer');const recovery=await held;clearTimeout(timer);assert.equal(recovery.keepAlive,false);assert.equal(recovery.historyRetained,true);assert.equal(recovery.applicationStemsRetained,true);assert(recovery.recoveryManifest);await obs.close();
   const manifest=JSON.parse(await fs.readFile(recovery.recoveryManifest,'utf8'));assert(manifest.packets.length>0);for(const entry of manifest.files)assert((await fs.stat(path.join(folder,entry.path))).size>0);
   await obs.launch({resolution:'640x480',fps:'60',storage:'disk',duration:120},folder);const listed=await obs.call('ListRecoveryManifests');assert(listed.manifests.some(item=>item.manifest===recovery.recoveryManifest));const saved=await obs.call('RecoverReplay',{manifest:recovery.recoveryManifest},25000);assert.equal(saved.recoveryManifest,recovery.recoveryManifest);await fs.access(recovery.recoveryManifest);
   await run('ffmpeg',['-v','error','-xerror','-i',saved.savedReplayPath,'-map','0:v:0','-map','0:a','-f','null','-']);const probe=JSON.parse(await run('ffprobe',['-v','error','-show_streams','-of','json',saved.savedReplayPath]));assert.equal(probe.streams.filter(stream=>stream.codec_type==='audio').length,6);
@@ -44,7 +44,7 @@ test('disk automatic save preflight failure preserves decodable journal after en
  }finally{clearTimeout(timer);await obs.close();await fs.rm(folder,{recursive:true,force:true});}
 });
 test('RAM save preflight failure keeps a stable frozen history alive for retry',{skip:process.platform!=='win32'||process.env.EMBER_NATIVE_REPLAY_TEST!=='1',timeout:25000},async()=>{
- const folder=await fs.mkdtemp(path.join(os.tmpdir(),'ember-ram-recovery-')),obs=new OBS(path.resolve(__dirname,'../../engine/obs'));let timer,stopped=0;obs.on('engine-stopped',()=>stopped++);
+ const folder=await fs.mkdtemp(path.join(os.tmpdir(),'ember-ram-recovery-')),obs=new OBS(path.resolve(process.env.EMBER_NATIVE_RUNTIME||path.join(__dirname,'../../engine/obs')));let timer,stopped=0;obs.on('engine-stopped',()=>stopped++);
  try{const stat=await fs.statfs(folder),reserve=Math.ceil(stat.bavail*stat.bsize/1048576)+1024;await obs.launch({resolution:'640x480',fps:'60',storage:'ram',duration:120,replayRamLimitMiB:0.015625,replaySaveReserveMiB:reserve},folder);await obs.call('CreateScene',{sceneName:'Live RAM recovery'});await obs.call('SetCurrentProgramScene',{sceneName:'Live RAM recovery'});const recovery=new Promise((resolve,reject)=>{timer=setTimeout(()=>reject(new Error('No live recovery hold')),15000);obs.once('ReplayBufferRecoveryRequired',resolve);});recovery.catch(()=>{});await obs.call('StartReplayBuffer');const held=await recovery;clearTimeout(timer);assert.equal(held.keepAlive,true);assert.equal(held.historyRetained,true);assert(held.snapshotId);await wait(150);assert.equal(stopped,0);const before=await obs.call('GetCaptureHealth');assert(before.outputActive);assert.equal(before.journalAcceptingPackets,false);assert(before.retainedBytes>0);const retry=await obs.call('SaveReplayBuffer');assert.equal(retry.recoveryRequired,true);assert.equal(retry.snapshotId,held.snapshotId);assert.equal(retry.replayStartMonotonicNs,held.replayStartMonotonicNs);assert.equal(retry.replayEndMonotonicNs,held.replayEndMonotonicNs);assert.equal(stopped,0);
  }finally{clearTimeout(timer);await obs.close();await fs.rm(folder,{recursive:true,force:true});}
 });

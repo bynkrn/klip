@@ -21,15 +21,47 @@ space; its free-space cache refreshes after one second or 64 MiB of writes.
 OBS/GPU allocations and bounded snapshot metadata are additional to payload
 limits. A resource limit freezes capture and attempts an automatic save before
 reporting the stopped output, rather than silently dropping selected history.
-If there is too little free space to mux a disk history, its existing payloads
-are flushed and retained in place with an atomic `Ember-Recovery-*.json`
-manifest containing codec headers and exact packet offsets/timestamps. No
-payload copy is required. `ListRecoveryManifests` and `RecoverReplay` allow
-later muxing; `CompleteRecovery` removes the checkpoint only after the caller
-has verified its final library clip. Recovery retains video, combined audio
-and microphone; separate app stems are explicitly reported unavailable.
-RAM history, or a failed disk checkpoint, stays frozen in the live native
-session and emits `ReplayBufferRecoveryRequired` with `keepAlive:true`; the
+During ordinary disk recording, a low-priority worker checkpoints completed
+GOPs about every two seconds. It flushes new segment payloads and atomically
+replaces one `Ember-Recovery-*.json` manifest per session, containing codec
+headers, exact packet offsets/timestamps, CRC32 checksums and independent
+application PCM records. There is no per-frame disk flush or payload copy.
+The prior generation stays owned until its replacement is durable. Old
+checkpoint owners are then released, so rolling expiry remains bounded even
+while a manual save is reading its own pinned history.
+
+After an abrupt process exit, `ListRecoveryManifests`, `RecoverReplay` and
+`SnapshotRecoveryAudio` reconstruct the last durable completed-GOP window,
+combined audio, microphone and durably available app stems. WAVs preserve
+sample alignment; the manifest retains application IDs/names, source start,
+source offset and video offset. Missing or unsafe stems have explicit warnings.
+Truncated payloads, invalid packet ranges/timing and checksum failures reject
+recovery while leaving its original manifest and payloads in place. Recovery
+retries reuse one raw output and one owned WAV folder rather than accumulating
+full copies. Legacy version-one manifests remain readable, with an explicit
+warning that they contain no separate application PCM.
+
+If there is too little free space to mux a disk history, a final emergency
+checkpoint retains that frozen window, including available app PCM.
+`CompleteRecovery` retires the manifest durably before deleting payloads, and
+is called only after the final library clip has been verified and published.
+Shared payloads remain until every referencing recovery has completed.
+Normal stop removes the active periodic checkpoint; an error preserves the
+last valid checkpoint if a newer emergency checkpoint cannot be written.
+Dead-owner garbage absent from all valid manifests is collected on the next
+recording start. Invalid manifests suspend collection. Four pending manifests
+block another disk recording instead of silently deleting unsaved recovery;
+unreadable recovery metadata also blocks recording until repaired or recovered;
+the existing per-session video and shared audio payload budgets still apply.
+
+This protects the last successful disk checkpoint, not the incomplete tail.
+On a responsive disk, the omitted tail is normally up to roughly three seconds
+(checkpoint interval plus one GOP); slow or failed storage can increase it.
+There is no crash checkpoint before the first completed GOP and successful
+flush. Hardware must honor Windows flush/write-through requests. Real process
+kill/relaunch is tested; physical power-cut behavior is not claimed as tested.
+On resource exhaustion, RAM history or disk history whose emergency
+checkpoint cannot be written stays frozen in the live native session and emits `ReplayBufferRecoveryRequired` with `keepAlive:true`; the
 engine does not report a stopped output or discard it automatically.
 
 Saving freezes packet metadata and pins payload owners. The rolling capture
@@ -92,6 +124,8 @@ The release workflow runs these deterministic tests without GPU/audio devices:
 ./tools/native-capture/test-packet-ring.ps1
 ./tools/native-capture/test-audio-journal.ps1
 ./tools/native-capture/test-source-health.ps1
+./tools/native-capture/build-recovery-test.ps1
+node --test tools/native-capture/durable-recovery.test.js tests/durable-recovery-capture.test.js
 ```
 
 Manual native integrations require Windows process-loopback support, and video
@@ -103,6 +137,8 @@ nothing is sent to speakers and no user game/app is controlled:
 ./tools/native-capture/test-audio-manager.ps1
 $env:EMBER_NATIVE_REPLAY_TEST='1'
 node --test tools/native-capture/replay-native.test.js
+$env:EMBER_NATIVE_RUNTIME=(Resolve-Path 'tools/build-deps/durable-recovery/runtime').Path
+node --test tools/native-capture/replay-native.test.js tools/native-capture/periodic-recovery-native.test.js
 $env:EMBER_NATIVE_AUDIO_TEST='1'
 node --test tools/native-capture/audio-replay-native.test.js
 ```

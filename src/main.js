@@ -5,7 +5,12 @@ const {fileResponse}=require('./media');
 const {trashClips}=require('./library-actions');
 const {WindowsTrash}=require('./windows-trash');
 const {TrashMedia}=require('./trash-media');
-const {EditorAudio,audioOutput}=require('./audio-editor');
+const {EditorAudio}=require('./audio-editor');
+const {RecordingHealth}=require('./recording-health');
+const {planClipExport,exportClip}=require('./clip-export');
+const {EditorAudioPreferences}=require('./editor-audio-preferences');
+const {AudioWaveforms}=require('./audio-waveform');
+const {assertClipSource}=require('./clip-source');
 const {TimelinePreviews}=require('./timeline');
 const {Updates,healthAckPath}=require('./updates');
 const {captureSettingsChanged}=require('./settings-policy');
@@ -30,6 +35,9 @@ let win,tray,quitting=false,quitReady=false,quitAttempt=null,busy=false,saving=f
 function trackOperation(fn){const pending=Promise.resolve().then(fn);operations.add(pending);const done=()=>operations.delete(pending);pending.then(done,done);return pending;}
 const previewQueue=new PreviewQueue(()=>!!win&&!win.isDestroyed()&&win.isVisible()&&!win.isMinimized()&&win.isFocused()&&!saving&&!quitting&&!updating&&!deviceChanging);
 const root=path.join(__dirname,'..'),toolDir=path.join(root,'tools'),stateFile=path.join(app.getPath('userData'),'settings.json');
+const recordingHealth=new RecordingHealth();
+const audioPreferences=new EditorAudioPreferences({file:path.join(app.getPath('userData'),'editor-audio-mixes.json')});
+const waveforms=new AudioWaveforms({cacheDir:path.join(app.getPath('userData'),'previews'),resolve:id=>known.get(id),run});
 const notificationSounds=new NotificationSound({directory:path.join(app.getPath('userData'),'sounds'),asset});
 const recycle=new WindowsTrash({historyFile:path.join(app.getPath('userData'),'trash-history.json'),root:()=>state.folder,helper:path.join(toolDir,'recycle-bin.exe')});
 const trashMedia=new TrashMedia({trash:recycle,cacheDir:path.join(app.getPath('userData'),'previews'),run,probe,asset,revoke:url=>assets.delete(new URL(url).pathname.slice(1))});
@@ -47,6 +55,7 @@ defaults.launchMinimized=false;
 defaults.language='tr';
 defaults.qualityMode='quality';defaults.videoBitrate=60;
 defaults.notificationVolume=75;defaults.notificationSound='ember';
+defaults.showCaptureHealth=false;
 const recovery=new RecoveryController({getCapture:()=>capture,isSaving:()=>saving||busy||deleting,save,onChange:()=>status('')});
 const recoveryExit=new RecoveryExitGuard({getCapture:()=>capture,waitForOperations,confirmDiscard:confirmRecoveryDiscard});
 async function waitForOperations(){while(operations.size)await Promise.allSettled([...operations]);}
@@ -55,7 +64,7 @@ async function confirmRecoveryDiscard(){
 }
 function showMainWindow(){if(win&&!win.isDestroyed()){if(win.isMinimized())win.restore();win.show();win.focus();}}
 if(!app.requestSingleInstanceLock()){app.quit();process.exit(0);}app.on('second-instance',(_event,argv)=>{if(argv.includes(STARTUP_ARG))return;revealRequested=true;showMainWindow();});
-function status(message,extra={}){(!win?.isDestroyed()&&!win?.webContents.isDestroyed())&&win?.webContents.send('native-state',{message,saving,running:!!capture?.running,captureHealth:capture?.health,recovery:recovery.state(),buffered:capture?.running?Math.min(state.duration,Math.floor((Date.now()-capture.started)/1000)):0,...extra});}
+function status(message,extra={}){(!win?.isDestroyed()&&!win?.webContents.isDestroyed())&&win?.webContents.send('native-state',{message,saving,running:!!capture?.running,captureHealth:capture?.health,recordingHealth:recordingHealth.read(capture),recovery:recovery.state(),buffered:capture?.running?Math.min(state.duration,Math.floor((Date.now()-capture.started)/1000)):0,...extra});}
 function refreshTray(){if(!tray)return;const text=message=>translate(message,state.language);tray.setContextMenu(Menu.buildFromTemplate([{label:text('Ember’ı Aç'),click:showMainWindow},{label:text('Klip Al'),click:()=>save().then(clips=>status('',{clips,saved:true})).catch(e=>status(e.message))},{label:text('Çıkış'),click:()=>app.quit()}]));}
 async function restartAfterAudioChange(){
  if(deviceChanging||quitting||updating)return;deviceChanging=true;
@@ -121,14 +130,14 @@ async function preserveAutomaticReplay({detail,complete,fail}){
    while(saving||deleting)await new Promise(resolve=>setTimeout(resolve,100));
    const source=Object.create(capture);source.lastSnapshot=detail;source.save=async()=>detail.savedReplayPath;
    const clips=await saveClipFile({source});if(detail.recoveryManifest)try{await source.completeRecovery?.(detail.savedReplayPath);}catch(error){status('Klip kaydedildi; kurtarma günlüğü temizlenemedi: '+error.message);}
-   status('Tampon sınırına ulaşıldı; mevcut klip otomatik korundu.',{clips,automaticReplay:true});complete?.(clips);
+   status(detail.recovered?'Kayıt kurtarıldı; görüntü ve kullanılabilir ayrı ses izleri klibe eklendi.':'Tampon sınırına ulaşıldı; mevcut klip otomatik korundu.',{clips,automaticReplay:true});complete?.(clips);
   }catch(error){status('Otomatik klip tamamlanamadı; orijinal kayıt kurtarma için korundu: '+error.message);fail?.(error);}
  }));
 }
 async function start(){if(busy)return;busy=true;try{status('Kayıt motoru açılıyor…');await fs.mkdir(state.folder,{recursive:true});const buffer=path.join(app.getPath('userData'),'buffer');await fs.mkdir(buffer,{recursive:true});await capture.start(state,buffer);status(capture.video?.method==='window'?'Tampon hazır · Windows pencere yakalama':'Tampon hazır');}catch(e){await capture.stop().catch(()=>{});throw e;}finally{busy=false;}}
 function bindHotkey(key){if(!globalShortcut.register(key,()=>save().then(clips=>status('',{clips,saved:true})).catch(e=>status(e.message))))throw new Error('Bu kısayol başka bir uygulamada kullanılıyor.');}
 function handle(name,fn){ipcMain.handle('klip:'+name,async(e,...args)=>{if(e.sender!==win.webContents||e.senderFrame!==win.webContents.mainFrame)throw new Error('İstek reddedildi');try{if(quitting)throw new Error('Uygulama kapanıyor.');if((updating||deviceChanging)&&!['window','update-state','update-install'].includes(name))throw new Error('Güncelleme hazırlanıyor.');return{data:await (['trim','toggle','delete','trash-restore','settings','audio','import','notification-sound-import','recover-replays','library','trash-list','trash-preview','editor-audio','editor-timeline'].includes(name)?trackOperation(()=>fn(...args)):fn(...args))};}catch(error){return{error:error.message};}});}
-handle('init',async()=>({settings:await notificationSounds.settings(state),clips:[],recovery:recovery.state(),projectTransfers:projectTransfers.list()}));handle('library',library);
+handle('init',async()=>({settings:await notificationSounds.settings(state),clips:[],recovery:recovery.state(),recordingHealth:recordingHealth.read(capture),projectTransfers:projectTransfers.list()}));handle('library',library);
 handle('project-transfer-state',()=>projectTransfers.list());
 handle('project-transfer-start',payload=>trackOperation(()=>projectTransfers.create(payload)));
 handle('project-transfer-retry',({requestId})=>trackOperation(()=>projectTransfers.retry(requestId)));
@@ -143,11 +152,14 @@ handle('audio',async({track,enabled})=>{const base=track===1||track===6,applicat
 handle('settings',async next=>{const c={...state,storage:state.storage||'disk'};for(const k in defaults)if(typeof next[k]===typeof defaults[k])c[k]=next[k];if(isDeepStrictEqual(c,state))return notificationSounds.settings(state);await notificationSounds.validate(c);if(!['quality','bitrate'].includes(c.qualityMode)||!Number.isInteger(c.videoBitrate)||c.videoBitrate<5||c.videoBitrate>250)throw new Error('Bitrate 5 ile 250 Mbps arasında olmalı.');if(capture.running&&captureSettingsChanged(state,c))throw new Error('Kayıt ayarlarını değiştirmek için önce tamponu durdur.');if(!['tr','en'].includes(c.language)||!['screen','game','auto'].includes(c.mode)||!['ram','disk'].includes(c.storage)||![30,60,90,120,180,240,300].includes(c.duration)||!['1920x1080','2560x1440','1280x720'].includes(c.resolution)||!['24','30','60','120','144','240','custom'].includes(c.fps)||!Number.isInteger(c.customFps)||c.customFps<1||c.customFps>360||!path.isAbsolute(c.folder))throw new Error('Geçersiz kayıt ayarı.');if(c.folder!==state.folder)await recycle.addRoot(c.folder);if(c.hotkey!==state.hotkey){bindHotkey(c.hotkey);globalShortcut.unregister(state.hotkey);}if(c.launch!==state.launch||c.launchMinimized!==state.launchMinimized){const registration=await reconcileStartup({app,settings:c});if(registration.status==='error')throw new Error(registration.message);if(registration.status==='os-disabled')status('Windows başlangıç izni kapalı. Görev Yöneticisi → Başlangıç Uygulamaları bölümünden Ember’ı etkinleştir.');}state=c;if(capture.running)capture.config=c;refreshTray();await fs.writeFile(stateFile,JSON.stringify(state,null,2));return notificationSounds.settings(state);});
 handle('toggle',async()=>{if(saving)throw new Error('Klip hazırlanırken tampon durdurulamaz.');if(capture.recoveryRequired?.keepAlive)throw new Error('Önce bekleyen tamponu kurtar.');if(capture.running){await capture.stop();status('Tampon durduruldu');}else await start();return{running:capture.running};});handle('save',save);
 handle('explorer',id=>{const clip=known.get(id);if(!clip)throw new Error('Klip bulunamadı');shell.showItemInFolder(clip.file);});
-handle('delete',async({ids})=>{if(busy||saving)throw new Error('Devam eden işlemin bitmesini bekle.');busy=true;deleting=true;try{const result=await trashClips(ids,{known,trashItem:async file=>{await recycle.remember(file);await shell.trashItem(file);}});for(const id of result.deleted){editorAudio.invalidate(id);timeline.invalidate(id); }for(const [key,clip]of cache)if(result.deleted.includes(clip.id)){cache.delete(key);for(const url of [clip.videoUrl,clip.thumbnail])if(url)assets.delete(new URL(url).pathname.slice(1));}return{...result,clips:await library()};}finally{busy=false;deleting=false;}});
+handle('delete',async({ids})=>{if(busy||saving)throw new Error('Devam eden işlemin bitmesini bekle.');busy=true;deleting=true;try{const result=await trashClips(ids,{known,trashItem:async file=>{await recycle.remember(file);await shell.trashItem(file);}});for(const id of result.deleted){editorAudio.invalidate(id);timeline.invalidate(id);waveforms.invalidate(id);}for(const [key,clip]of cache)if(result.deleted.includes(clip.id)){cache.delete(key);for(const url of [clip.videoUrl,clip.thumbnail])if(url)assets.delete(new URL(url).pathname.slice(1));}return{...result,clips:await library()};}finally{busy=false;deleting=false;}});
 handle('trash-list',async()=>trashMedia.entries(await recycle.list()));
 handle('trash-preview',({id})=>trashMedia.preview(id));
 handle('editor-audio',payload=>editorAudio.get(payload));
 handle('editor-timeline',payload=>timeline.get(payload));
+handle('editor-audio-preferences',payload=>trackOperation(()=>audioPreferences.handle(payload,known.get(payload?.id))));
+handle('editor-audio-waveform',payload=>trackOperation(()=>waveforms.get(payload)));
+handle('editor-audio-waveform-cancel',({id})=>{waveforms.invalidate(id);return true;});
 handle('update-state',()=>updates.state());
 handle('update-check',()=>updates.check({manual:true,source:'manual'}));
 handle('update-download',()=>updates.download());
@@ -157,8 +169,11 @@ handle('trash-open',()=>recycle.open());
 handle('trash-restore',async({ids})=>{if(busy||saving)throw new Error('Devam eden işlemin bitmesini bekle.');busy=true;try{const result=await trashMedia.restore(ids);for(const restored of result.restored){try{restored.file=await relocateRestoredClip(restored.file,app.getPath('videos'),state.folder);}catch(error){result.refreshError=[result.refreshError,error.message].filter(Boolean).join(' ');}}result.entries=trashMedia.entries(result.entries);let clips=null,libraryError;try{clips=await library();for(const restored of result.restored)if(!clips.some(clip=>clip.file===restored.file)){try{const stat=await fs.stat(restored.file);clips.unshift(await describe({file:restored.file,id:restored.file,name:path.parse(restored.file).name,fileName:path.basename(restored.file),game:restored.game||'İçe aktarılanlar',mtime:stat.mtimeMs,size:stat.size}));}catch(error){libraryError=error.message;}}}catch(error){libraryError=error.message;}return{...result,clips,...libraryError?{libraryError}:{}};}finally{busy=false;}});
 handle('import',async()=>{const pick=await dialog.showOpenDialog(win,{properties:['openFile'],filters:[{name:'Video',extensions:['mp4','mkv','mov','webm']}]});if(pick.canceled)return null;const file=pick.filePaths[0],st=await fs.stat(file);return describe({file,id:file,name:path.parse(file).name,fileName:path.basename(file),game:'İçe aktarılanlar',mtime:st.mtimeMs,size:st.size});});
 handle('notification-sound-import',async()=>{const pick=await dialog.showOpenDialog(win,{properties:['openFile'],filters:[{name:'Audio',extensions:['wav','mp3','ogg','m4a']}]});if(pick.canceled||!pick.filePaths.length)return null;const imported=await notificationSounds.importFile(pick.filePaths[0]);state={...state,...imported};if(capture.running)capture.config=state;await fs.writeFile(stateFile,JSON.stringify(state,null,2));return notificationSounds.settings(state);});
-handle('trim',async({id,start,end,name,tracks,volumes})=>{if(busy)throw new Error('Başka bir işlem devam ediyor');const clip=known.get(id);if(!clip||!Number.isFinite(start)||!Number.isFinite(end)||start<0||end>clip.seconds+.03||end-start<.1)throw new Error('Geçersiz kesim aralığı');const outputAudio=audioOutput(clip,tracks,volumes);busy=true;let temp;
- try{const dir=path.join(state.folder,files.safeName(clip.game));await fs.mkdir(dir,{recursive:true});const filename=files.safeName(path.parse(name||clip.name+'-kesit').name)+'.mp4',target=await files.unique(path.join(dir,filename));temp=path.join(dir,'.'+crypto.randomUUID()+'.mp4');const encoder=clip.codec==='hevc'?'hevc_nvenc':clip.codec==='av1'?'av1_nvenc':'h264_nvenc';const args=['-v','error','-n','-ss',String(start),'-i',clip.file,'-t',String(end-start),'-map','0:v:0'];args.push(...outputAudio.args);args.push('-c:v',encoder,'-preset','p5','-rc','constqp','-qp','12','-fps_mode','passthrough','-c:a','aac','-b:a','256k','-movflags','+faststart');outputAudio.names.forEach((title,i)=>args.push('-metadata:s:a:'+i,'title='+title,'-metadata:s:a:'+i,'handler_name='+title));args.push(temp);status('Klip kesiliyor…');await run('ffmpeg',args);const check=await probe(temp),v=check.streams.find(s=>s.codec_type==='video');if(!v||v.width!==Number(clip.resolution.split('x')[0])||v.height!==Number(clip.resolution.split('x')[1]))throw new Error('Çıktı doğrulanamadı');await fs.link(temp,target);return{clips:await library(),file:target};}finally{busy=false;if(temp)await fs.unlink(temp).catch(()=>{});}});
+handle('export-plan',({id,start,end,mode,sourceVersion})=>trackOperation(async()=>planClipExport({clip:await assertClipSource(known.get(id),sourceVersion),start,end,mode},{run,probe})));
+handle('trim',async({id,start,end,mode='precise',name,tracks,volumes,planToken,sourceVersion})=>{
+ if(busy)throw new Error('Başka bir işlem devam ediyor');busy=true;
+ try{status('Klip dışa aktarılıyor…');const result=await exportClip({clip:await assertClipSource(known.get(id),sourceVersion),start,end,mode,name,tracks,volumes,folder:state.folder,planToken},{run,probe});return{...result,media:undefined,clips:await library()};}finally{busy=false;}
+});
 app.whenReady().then(async()=>{
  await fs.mkdir(app.getPath('userData'),{recursive:true});state=migrateDefaultClipFolder({...defaults,...await fs.readFile(stateFile,'utf8').then(JSON.parse).catch(()=>({}))},app.getPath('videos'));if(app.isPackaged)state=await loadInstallationPreferences(state,path.join(path.dirname(process.execPath),'installation.ini'));Object.assign(state,normalizeVideoQuality(state));state=await notificationSounds.initialize(state);await fs.writeFile(stateFile,JSON.stringify(state,null,2));
  const startup=await reconcileStartup({app,settings:state});if(startup.status==='error')console.error(startup.message);

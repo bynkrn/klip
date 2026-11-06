@@ -98,6 +98,7 @@ class Engine{
   Data outputSettings({{"directory",buffer.u8string()},{"mux_helper",(root/"bin/64bit/obs-ffmpeg-mux.exe").u8string()},{"storage",disk?"disk":"ram"},{"max_time_sec",duration},{"max_size_mb",maxSizeMiB},{"max_size_bytes",(int64_t)std::ceil(maxSizeMiB*1048576.0)},{"min_free_mb",1024},{"save_min_free_mb",saveReserveMiB}});
   replay=obs_output_create("ember_replay_journal","Ember Replay",outputSettings,nullptr);require(replay!=nullptr,"Replay journal output is unavailable");
   ember_replay::Output::from(replay).setSnapshotObserver([this](const json &snapshot){if(audioReplay)audioReplay->pin(snapshot);},[this](const std::string &id){if(audioReplay)audioReplay->discard(id);});
+  ember_replay::Output::from(replay).setAudioCheckpointObserver([this](int64_t start,int64_t end){return audioReplay?audioReplay->checkpoint(start,end):ember_replay::DurableAudio{};});
   obs_output_set_video_encoder(replay,videoEncoder);
   for(size_t i=0;i<audioEncoders.size();++i){Data settings({{"bitrate",256}});auto name="Ember AAC "+std::to_string(i+1);audioEncoders[i]=obs_audio_encoder_create("ffmpeg_aac",name.c_str(),settings,i,nullptr);require(audioEncoders[i]!=nullptr,"AAC encoder is unavailable");obs_encoder_set_audio(audioEncoders[i],obs_get_audio());obs_output_set_audio_encoder(replay,audioEncoders[i],i);}
   signal_handler_connect(obs_output_get_signal_handler(replay),"stop",onStopped,this);
@@ -151,6 +152,7 @@ public:
   require(initialized,"Capture engine is not initialized");
   if(type=="ListRecoveryManifests")return ember_replay::Output::listRecoveries(buffer);
   if(type=="RecoverReplay")return ember_replay::Output::recover(data,root/"bin/64bit/obs-ffmpeg-mux.exe");
+  if(type=="SnapshotRecoveryAudio")return ember_replay::Output::recoverAudio(data);
   if(type=="CompleteRecovery")return ember_replay::Output::completeRecovery(data);
   if(type=="ListAudioSessions")return audioReplay->list(data.value("excludedProcessId",0u));
   if(type=="AttachAudioReplay")return audioReplay->attach(input(data),data);

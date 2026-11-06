@@ -64,9 +64,21 @@ public:
   if(end<=start||end-start>301000000000LL)throw std::runtime_error("Invalid application audio snapshot duration");flush();
   {std::lock_guard<std::mutex> lock(journalMutex);if(start<contaminatedUntil)throw std::runtime_error("Overlapping process-tree audio: this ancestor application stem was omitted; combined audio is retained");}
   std::vector<ember_replay::PacketRef> records;
-  {std::lock_guard<std::mutex> lock(journalMutex);auto collect=[&](const auto &owners){for(auto &segment:owners)for(const auto &record:segment->copyRecords())if(record.info.presentationNs<end&&record.info.presentationNs+record.info.durationNs>start)records.push_back({record.info,record.offset,record.size,segment});};if(pin)collect(pin->segments);else collect(segments);}
+  {std::lock_guard<std::mutex> lock(journalMutex);auto collect=[&](const auto &owners){for(auto &segment:owners)for(const auto &record:segment->copyRecords())if(record.info.presentationNs<end&&record.info.presentationNs+record.info.durationNs>start)records.push_back({record.info,record.offset,record.size,segment,record.checksum});};if(pin)collect(pin->segments);else collect(segments);}
   if(records.empty())return 0;
   std::stable_sort(records.begin(),records.end(),[](const auto &a,const auto &b){return a.info.presentationNs<b.info.presentationNs;});
+  auto peak=writeWave(path,start,end,records,[](const auto &record){return record.segment->read(record.offset,record.size);});
+  {std::lock_guard<std::mutex> lock(journalMutex);if(start<contaminatedUntil){std::filesystem::remove(path);throw std::runtime_error("Overlapping process-tree audio: this ancestor application stem was omitted; combined audio is retained");}}
+  return peak;
+ }
+ ember_replay::Snapshot durable(int64_t start,int64_t end,std::string *warning=nullptr){
+  try{flush();}catch(const std::exception &e){if(!warning)throw;*warning=e.what();}ember_replay::Snapshot result;result.startNs=start;result.endNs=end;
+  std::lock_guard<std::mutex> lock(journalMutex);if(start<contaminatedUntil)throw std::runtime_error("Overlapping ancestor application stem omitted; combined audio is retained");
+  for(const auto &segment:segments)for(const auto &record:segment->copyRecords())if(record.info.presentationNs<end&&record.info.presentationNs+record.info.durationNs>start){result.packets.push_back({record.info,record.offset,record.size,segment,record.checksum});result.bytes+=record.size;}
+  return result;
+ }
+ template<class Records,class Reader> static float writeWave(const std::filesystem::path &path,int64_t start,int64_t end,const Records &records,Reader read){
+  if(end<=start||end-start>301000000000LL)throw std::runtime_error("Invalid application audio recovery duration");
   int64_t frames=(int64_t)std::llround((end-start)*48000.0/1000000000.0);uint32_t bytes=(uint32_t)(frames*8);
   std::ofstream out(path,std::ios::binary|std::ios::trunc);if(!out)throw std::runtime_error("Cannot create application audio snapshot");
   HANDLE sparse=CreateFileW(path.c_str(),GENERIC_WRITE,FILE_SHARE_READ|FILE_SHARE_WRITE,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);if(sparse!=INVALID_HANDLE_VALUE){DWORD ignored=0;DeviceIoControl(sparse,FSCTL_SET_SPARSE,nullptr,0,nullptr,0,&ignored,nullptr);CloseHandle(sparse);}
@@ -75,11 +87,10 @@ public:
   for(int64_t frame=0;frame<frames;frame+=48000){int64_t count=std::min<int64_t>(48000,frames-frame);std::vector<float> block((size_t)count*2,0);
    while(first<records.size()&&(int64_t)std::llround((records[first].info.presentationNs-start)*48000.0/1e9)+records[first].size/8<=frame)first++;
    for(size_t n=first;n<records.size();n++){const auto &record=records[n];int64_t at=(int64_t)std::llround((record.info.presentationNs-start)*48000.0/1e9);if(at>=frame+count)break;int64_t from=std::max<int64_t>(0,frame-at),to=std::max<int64_t>(0,at-frame),take=std::min<int64_t>((int64_t)record.size/8-from,count-to);if(take<=0)continue;
-    auto data=record.segment->read(record.offset,record.size);for(int64_t sample=0;sample<take*2;sample++){float value;std::memcpy(&value,data.data()+(from*2+sample)*4,4);block[(size_t)to*2+sample]+=value;}
+    auto data=read(record);for(int64_t sample=0;sample<take*2;sample++){float value;std::memcpy(&value,data.data()+(from*2+sample)*4,4);block[(size_t)to*2+sample]+=value;}
    }
    float local=0;for(auto value:block)local=std::max(local,std::abs(value));peak=std::max(peak,local);if(local>0.0000001f){out.seekp(44+frame*8);out.write(reinterpret_cast<const char*>(block.data()),count*8);}
   }
-  {std::lock_guard<std::mutex> lock(journalMutex);if(start<contaminatedUntil){out.close();std::filesystem::remove(path);throw std::runtime_error("Overlapping process-tree audio: this ancestor application stem was omitted; combined audio is retained");}}
   if(peak<=0.0000001f){out.close();std::filesystem::remove(path);return 0;}if(out.tellp()<44+(int64_t)bytes){out.seekp(43+(int64_t)bytes);out.put(0);}out.flush();if(!out)throw std::runtime_error("Application audio snapshot write failed");return peak;
  }
  const std::string &label()const{return name;}

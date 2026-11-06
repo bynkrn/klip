@@ -831,13 +831,18 @@
   function selectedEditorAudioVolumes(clip=selected()){
     const gains=ensureEditorAudioGains(clip);return Object.fromEntries(selectedEditorAudioIndexes(clip).map(index=>[index,gains.get(index)??1]));
   }
+  function applyEditorAudioMix(clip,mix){
+    if(!clip||!mix||!Array.isArray(mix.tracks)||!mix.volumes||typeof mix.volumes!=='object')return;const tracks=editorAudioTracks(clip),valid=new Set(tracks.map(track=>track.index)),selection=new Set(mix.tracks.filter(index=>valid.has(index))),combined=editorCombinedAudioIndex(clip);
+    if(combined!==null&&selection.has(combined)){selection.clear();selection.add(combined);}editorAudio.selections.set(clip.id,selection);const gains=ensureEditorAudioGains(clip);for(const track of tracks){const gain=mix.volumes[track.index];if(typeof gain==='number'&&Number.isFinite(gain))gains.set(track.index,Math.max(0,Math.min(1,gain)));}
+    syncEditorAudioControls(clip);if(page==='editor'&&editorAudio.clipId===clip.id)return refreshEditorAudio(clip);
+  }
   function setEditorAudioVolume(index,percent,clip=selected()){
-    if(!editorAudioTracks(clip).some(track=>track.index===index)||!Number.isFinite(Number(percent)))return;ensureEditorAudioGains(clip).set(index,Math.max(0,Math.min(100,Number(percent)))/100);syncEditorAudioControls(clip);if(page==='editor'&&editorAudio.clipId===clip?.id)syncEditorAudio();
+    if(!editorAudioTracks(clip).some(track=>track.index===index)||!Number.isFinite(Number(percent)))return;ensureEditorAudioGains(clip).set(index,Math.max(0,Math.min(100,Number(percent)))/100);syncEditorAudioControls(clip);editorAudio.enhancements?.changed(clip);if(page==='editor'&&editorAudio.clipId===clip?.id)syncEditorAudio();
   }
   function setEditorAudioTrack(index,on,clip=selected()){
     if(!editorAudioTracks(clip).some(track=>track.index===index))return;const selection=ensureEditorAudioSelection(clip),combined=editorCombinedAudioIndex(clip);
     if(on){if(combined!==null){if(index===combined)selection.clear();else selection.delete(combined);}selection.add(index);}else selection.delete(index);
-    syncEditorAudioControls(clip);if(page==='editor'&&editorAudio.clipId===clip.id)return refreshEditorAudio(clip);
+    syncEditorAudioControls(clip);editorAudio.enhancements?.changed(clip);if(page==='editor'&&editorAudio.clipId===clip.id)return refreshEditorAudio(clip);
   }
   function syncEditorAudioControls(clip=selected()){
     const selection=ensureEditorAudioSelection(clip);root.querySelectorAll('[data-editor-audio-index],[data-export-audio-index]').forEach(input=>{const index=Number(input.dataset.editorAudioIndex??input.dataset.exportAudioIndex);input.checked=selection.has(index);});
@@ -860,6 +865,7 @@
     entry.playGeneration++;entry.pending=false;entry.media.muted=true;entry.media.pause();entry.media.removeAttribute('src');entry.media.load();
   }
   function releaseEditorAudio(){
+    editorAudio.enhancements?.release();
     editorAudio.generation++;for(const entry of editorAudio.elements.values())releaseEditorAudioElement(entry);editorAudio.elements.clear();
     const wasActive=Boolean(editorAudio.clipId);editorAudio.clipId='';editorAudio.loading=false;editorAudio.error='';editorAudio.buffering=false;if(wasActive)video.muted=editorAudio.viewerMuted;
   }
@@ -895,7 +901,7 @@
     finally{if(generation===editorAudio.generation&&editorAudio.clipId===clip.id){editorAudio.loading=false;syncEditorAudioControls(clip);syncEditorAudio(true);}}
   }
   function activateEditorAudio(clip=selected()){
-    if(!clip){releaseEditorAudio();renderEditorAudio(clip);return;}if(editorAudio.clipId!==clip.id){releaseEditorAudio();editorAudio.viewerMuted=video.muted;editorAudio.masterMuted=video.muted;editorAudio.clipId=clip.id;video.muted=true;renderEditorAudio(clip);}return refreshEditorAudio(clip);
+    if(!clip){releaseEditorAudio();renderEditorAudio(clip);return;}if(editorAudio.clipId!==clip.id){releaseEditorAudio();editorAudio.viewerMuted=video.muted;editorAudio.masterMuted=video.muted;editorAudio.clipId=clip.id;video.muted=true;renderEditorAudio(clip);}if(editorAudio.enhancements)return Promise.resolve(editorAudio.enhancements.activate(clip)).then(()=>{if(page==='editor'&&editorAudio.clipId===clip.id)return refreshEditorAudio(clip);});return refreshEditorAudio(clip);
   }
   function playerIsMuted(){return page==='editor'?editorAudio.masterMuted:video.muted;}
   function setPlayerMuted(muted){

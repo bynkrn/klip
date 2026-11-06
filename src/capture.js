@@ -24,7 +24,7 @@ class Capture extends EventEmitter{
  async start(c,bufferDir){
   if(this.recoveryRequired?.keepAlive)throw new Error('Önce bekleyen tamponu kurtar.');if(this.running)return;
   if(this.obs.socket?.readyState===1)await this.obs.close();
-  this.audioEpoch++;this.lastSnapshot=null;this.replaySnapshots.clear();this.recoveryConfirmations.clear();this.recoveryRequired=null;this.pendingAudioClaims.clear();this.automaticPreservation=null;this.focus=null;this.syncEndpointAtStart=null;this.syncChangePending=false;this.syncOffsets=resolveAudioSync(null,null);this.lastWindow=null;this.lastGame='Masaüstü';this.activeGameExe=c.targetExe||null;
+  this.audioEpoch++;this.health=null;this.healthObservedAt=0;this.lastSnapshot=null;this.replaySnapshots.clear();this.recoveryConfirmations.clear();this.recoveryRequired=null;this.pendingAudioClaims.clear();this.automaticPreservation=null;this.focus=null;this.syncEndpointAtStart=null;this.syncChangePending=false;this.syncOffsets=resolveAudioSync(null,null);this.lastWindow=null;this.lastGame='Masaüstü';this.activeGameExe=c.targetExe||null;
   this.bufferDir=path.resolve(bufferDir);this.audioSnapshotRoot=path.join(this.bufferDir,'audio-snapshots');this.audioSignature=null;this.audioSources.clear();this.audioApps.clear();this.audioFailures.clear();await this.configure(c,bufferDir);await this.obs.launch(c,bufferDir);this.config=c;
   const o=this.obs;let scenes;for(let attempt=0;attempt<80;attempt++){try{scenes=await o.call('GetSceneList');break;}catch(e){if(attempt===79)throw e;await new Promise(r=>setTimeout(r,250));}}if(!scenes.scenes.some(s=>s.sceneName==='Klip'))await o.call('CreateScene',{sceneName:'Klip'});
   await o.call('SetCurrentProgramScene',{sceneName:'Klip'});
@@ -52,7 +52,7 @@ class Capture extends EventEmitter{
   this.watcher.stdout.on('data',b=>{tail+=b.toString();const lines=tail.split(/\r?\n/);tail=lines.pop();for(const line of lines)try{this.onFocus(JSON.parse(line)).catch(e=>this.emit('warning',e.message));}catch{}});
   this.audioTimer=setInterval(()=>this.refreshAudio().catch(e=>this.emit('warning',e.message)),this.dynamicAudio?1000:12000);
   if(this.audioSyncProfile)this.syncTimer=setInterval(()=>{if(this.running)this.refreshSyncProfile().catch(e=>{if(this.running)this.emit('warning',e.message);});},1000);
-  this.healthTimer=setInterval(()=>{if(this.running)this.obs.call('GetCaptureHealth').then(health=>{this.health=health;this.emit('health',health);}).catch(()=>{});},1000);
+  this.healthTimer=setInterval(()=>{if(this.running)this.obs.call('GetCaptureHealth').then(health=>{this.health=health;this.healthObservedAt=Date.now();this.emit('health',health);}).catch(()=>{});},1000);
   this.videoTimer=setInterval(()=>this.video?.check().catch(e=>this.emit('warning',e.message)),500);
  }
  async updateVisibility(isGame){await this.video?.setFocus(isGame);}
@@ -134,8 +134,8 @@ class Capture extends EventEmitter{
   try{
    const snapshot=this.replaySnapshots.get(original)||this.lastSnapshot;if(!snapshot?.replayStartMonotonicNs||!snapshot?.replayEndMonotonicNs)throw new Error('Ses izleri için video zaman aralığı doğrulanamadı.');
    const start=BigInt(snapshot.replayStartMonotonicNs),end=BigInt(snapshot.replayEndMonotonicNs);if(end<=start||end-start>301000000000n)throw new Error('Geçersiz ses zaman aralığı.');
-   await fs.mkdir(this.audioSnapshotRoot,{recursive:true});const folder=path.join(this.audioSnapshotRoot,crypto.randomUUID());await fs.mkdir(folder);
-   if(snapshot.recovered)return{folder,tracks:[],warnings:['Kurtarılan kaydın birleşik sesi korundu; uygulama sesleri ayrı olarak kurtarılamadı.']};
+   await fs.mkdir(this.audioSnapshotRoot,{recursive:true});if(snapshot.recovered&&!/^\d+-\d+-\d+$/.test(snapshot.snapshotId||''))throw new Error('Invalid recovery identity.');const folder=path.join(this.audioSnapshotRoot,snapshot.recovered?'recovered-'+snapshot.snapshotId:crypto.randomUUID());if(snapshot.recovered)await fs.rm(folder,{recursive:true,force:true});await fs.mkdir(folder);
+   if(snapshot.recovered){const result=await this.obs.call('SnapshotRecoveryAudio',{manifest:snapshot.recoveryManifest,folder},120000);return{...result,folder,tracks:this.config.autoAudio===false?[]:(result.tracks||[]).filter(track=>this.config.audioEnabled?.[track.id]!==false)};}
    const result=await this.obs.call('SnapshotAudioReplay',{snapshotId:snapshot.snapshotId,startNs:String(start),endNs:String(end),folder},120000);
    return{...result,folder,tracks:this.config.autoAudio===false?[]:(result.tracks||[]).filter(track=>this.config.audioEnabled?.[track.id]!==false)};
   }finally{const claim=this.pendingAudioClaims.get(original);claim?.resolve();this.pendingAudioClaims.delete(original);}
