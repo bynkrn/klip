@@ -16,6 +16,8 @@ Derleme: `./tools/build-installer.ps1`. Taşınabilir NSIS 3.12 derleyicisi resm
 
 ## Kullanım
 
+- Klip seçim kutucuklarıyla seçilen hazır dosyalar **Yeni Projeye Aktar** düğmesi veya sağ tık menüsüyle kendi video editörüne gönderilebilir. EXE, **Ayarlar → Genel → Video Editörü** bölümünden seçilir. Düzenlenebilir proje adı, seçilen klipler ve varsayılan kapalı kopyalama tercihi aktarım penceresindedir. Ember yalnız V1 JSON isteğini oluşturur; gerçek proje, medya havuzu ve isteğe bağlı kopyalama alıcı editöre aittir. Sonuç gelene kadar beklenir; başlatıcının çıkması başarı sayılmaz. Ayrıntılar ve alıcı bağlantısı: [Project Import V1](docs/project-import-v1.md).
+
 - Yerel uygulama `dist/Ember-win32-x64/Ember.exe` ile açılır; yanındaki çalışma zamanı dosyaları birlikte tutulur. Pencereyi kapatmak sistem tepsisine indirir; tamamen kapatmak için tepsiden **Çıkış** seçilir.
 - **Başlat** tamponu açar; **F8** arka planda da son seçili süreyi kaydeder. Varsayılan süre 2 dakika, seçenekler 30 saniye–5 dakikadır. Klipler seçili kayıt klasöründe oyun adına göre ayrılır.
 - Görüntüye/adına tek tıklama izlemeyi açar. Çoklu seçim yalnızca kutucuklarla yapılır; Ctrl/Shift veya Ctrl+A ile toplu seçim yoktur. Sağ tık menüsünden izleme, düzenleme, Dosya Gezgini ve silme açılır. **Delete/Sil** Windows Geri Dönüşüm Kutusu’na taşır; **Escape** seçimi temizler.

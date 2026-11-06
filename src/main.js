@@ -15,6 +15,7 @@ const {STARTUP_ARG,shouldStartHidden,reconcileStartup}=require('./startup');
 const {userDataDirectory,migrateDefaultClipFolder,relocateRestoredClip}=require('./brand-migration');
 const {normalizeVideoQuality}=require('./video-quality');
 const {loadInstallationPreferences}=require('./installation-preferences');
+const {ProjectTransfer,validateEditorExecutable}=require('./project-transfer');
 const {saveReplay}=require('./replay-save');
 const {NotificationSound}=require('./notification-sound');
 const {RecoveryController,RecoveryExitGuard}=require('./recovery-controller');
@@ -37,6 +38,8 @@ const timeline=new TimelinePreviews({cacheDir:path.join(app.getPath('userData'),
 const updateCache=path.join(app.getPath('userData'),'updates');
 const updates=new Updates({currentVersion:app.getVersion(),...updateConfig,ghPath:path.join(toolDir,'github','gh.exe'),cacheDir:updateCache,appRoot:path.dirname(process.execPath),installerPath:path.join(toolDir,'update-install.exe'),packaged:app.isPackaged});
 updates.on('state',update=>status('',{update}));
+const projectTransfers=new ProjectTransfer({directory:path.join(app.getPath('userData'),'project-imports'),resolveClip:id=>known.get(id),getEditor:()=>state?.editorExecutable||'',probe});
+projectTransfers.on('change',jobs=>status('',{projectTransfers:jobs}));
 const defaults={mode:'auto',duration:120,resolution:'1920x1080',fps:'60',customFps:90,codec:'h264',storage:'disk',stretch:true,holdFrame:true,cursor:true,hotkey:'F8',sound:true,launch:true,autoBuffer:true,autoAudio:true,folder:path.join(app.getPath('videos'),'Ember')};
 defaults.audioEnabled={};
 defaults.targetExe='';
@@ -125,7 +128,14 @@ async function preserveAutomaticReplay({detail,complete,fail}){
 async function start(){if(busy)return;busy=true;try{status('Kayıt motoru açılıyor…');await fs.mkdir(state.folder,{recursive:true});const buffer=path.join(app.getPath('userData'),'buffer');await fs.mkdir(buffer,{recursive:true});await capture.start(state,buffer);status(capture.video?.method==='window'?'Tampon hazır · Windows pencere yakalama':'Tampon hazır');}catch(e){await capture.stop().catch(()=>{});throw e;}finally{busy=false;}}
 function bindHotkey(key){if(!globalShortcut.register(key,()=>save().then(clips=>status('',{clips,saved:true})).catch(e=>status(e.message))))throw new Error('Bu kısayol başka bir uygulamada kullanılıyor.');}
 function handle(name,fn){ipcMain.handle('klip:'+name,async(e,...args)=>{if(e.sender!==win.webContents||e.senderFrame!==win.webContents.mainFrame)throw new Error('İstek reddedildi');try{if(quitting)throw new Error('Uygulama kapanıyor.');if((updating||deviceChanging)&&!['window','update-state','update-install'].includes(name))throw new Error('Güncelleme hazırlanıyor.');return{data:await (['trim','toggle','delete','trash-restore','settings','audio','import','notification-sound-import','recover-replays','library','trash-list','trash-preview','editor-audio','editor-timeline'].includes(name)?trackOperation(()=>fn(...args)):fn(...args))};}catch(error){return{error:error.message};}});}
-handle('init',async()=>({settings:await notificationSounds.settings(state),clips:[],recovery:recovery.state()}));handle('library',library);
+handle('init',async()=>({settings:await notificationSounds.settings(state),clips:[],recovery:recovery.state(),projectTransfers:projectTransfers.list()}));handle('library',library);
+handle('project-transfer-state',()=>projectTransfers.list());
+handle('project-transfer-start',payload=>trackOperation(()=>projectTransfers.create(payload)));
+handle('project-transfer-retry',({requestId})=>trackOperation(()=>projectTransfers.retry(requestId)));
+handle('project-editor-select',async()=>{
+ const pick=await dialog.showOpenDialog(win,{title:translate('Video Editörünü Seç',state.language),properties:['openFile'],filters:[{name:'Windows EXE',extensions:['exe']}]});if(pick.canceled)return null;
+ const editorExecutable=await validateEditorExecutable(pick.filePaths[0]),next={...state,editorExecutable};await fs.writeFile(stateFile,JSON.stringify(next,null,2));state=next;if(capture.running)capture.config=state;return{editorExecutable};
+});
 handle('recovery-state',()=>recovery.state());
 handle('recover-replays',async()=>{await recovery.recover();return{recovery:recovery.state(),clips:librarySnapshot};});
 handle('window',action=>{if(action==='minimize')win.minimize();else if(action==='maximize')win.isMaximized()?win.unmaximize():win.maximize();else if(action==='close')win.close();});
@@ -157,6 +167,7 @@ app.whenReady().then(async()=>{
  const audioSyncProfile=await fs.readFile(path.join(app.getPath('userData'),'audio-sync.json'),'utf8').then(JSON.parse).catch(()=>null);capture=new Capture(path.join(root,'engine/obs'),{audioSyncProfile});capture.config=state;capture.bufferDir=path.join(app.getPath('userData'),'buffer');capture.audioSnapshotRoot=path.join(capture.bufferDir,'audio-snapshots');capture.on('recovery-required',detail=>status(detail?.message||'',{recovery:recovery.state()}));capture.on('recoveries',()=>status('',{recovery:recovery.state()}));await capture.refreshRecoveries?.().catch(error=>status(error.message));capture.on('audio-sync',audioSync=>status('',{audioSync}));capture.on('audio-device-changed',restartAfterAudioChange);capture.on('automatic-replay',preserveAutomaticReplay);capture.on('warning',message=>status(message));capture.on('audio',audio=>status('',{audio}));capture.on('focus',focus=>status('',{focus}));capture.on('capture-source',source=>status(source.method==='window'?'Windows pencere yakalamaya geçildi.':'Oyun yakalama etkin.',{captureSource:source.method}));
  win=new BrowserWindow({width:1280,height:800,minWidth:850,minHeight:650,show:revealRequested||!shouldStartHidden(state,process.argv),backgroundColor:'#19171d',frame:false,title:'Ember',icon:path.join(__dirname,'icon.ico'),autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
  win.webContents.setWindowOpenHandler(({url})=>{if(url==='https://github.com/login/device'||url==='https://github.com/login/device/')shell.openExternal(url).catch(error=>status(error.message));return{action:'deny'};});win.webContents.on('will-navigate',(e,url)=>{if(url!==require('node:url').pathToFileURL(path.join(__dirname,'index.html')).href)e.preventDefault();});await win.loadFile(path.join(__dirname,'index.html'));
+ projectTransfers.initialize().catch(error=>status('Aktarım geçmişi okunamadı: '+error.message));
  try{bindHotkey(state.hotkey);}catch(e){status(e.message);}timer=setInterval(()=>status(''),1000);win.on('focus',()=>previewQueue.wake());win.on('close',e=>{if(!quitting){e.preventDefault();win.hide();}});
  const icon=nativeImage.createFromPath(path.join(__dirname,'icon.png'));tray=new Tray(icon);tray.setToolTip('Ember');refreshTray();tray.on('double-click',showMainWindow);
  if(startup.status==='os-disabled')status('Windows başlangıç izni kapalı. Görev Yöneticisi → Başlangıç Uygulamaları bölümünden Ember’ı etkinleştir.');if(startup.status==='error')status('Windows başlangıç kaydı onarılamadı: '+startup.message);
@@ -164,4 +175,5 @@ app.whenReady().then(async()=>{
  await acknowledgeUpdate().catch(error=>status(error.message));
  updates.check({source:'startup'}).catch(error=>updates.failure(error));updateTimer=setInterval(()=>{if(!quitting&&!updating)updates.check({source:'background'}).catch(error=>updates.failure(error));},15*60*1000);updateTimer.unref();
 });
+app.on('will-quit',()=>projectTransfers.close());
 app.on('before-quit',e=>{if(quitReady)return;e.preventDefault();if(quitting||quitAttempt)return;if(operations.size)status('Devam eden işlem tamamlanıp kapanılacak…');quitAttempt=recoveryExit.request().then(async choice=>{if(!choice.allowed)return;await waitForOperations();if(capture?.recoveryRequired?.keepAlive&&!choice.discardRecovery){status('Önce bekleyen tamponu kurtar.');return;}quitting=true;try{await capture?.stop({discardRecovery:choice.discardRecovery});}catch(error){quitting=false;previewQueue.wake();status(error.message);return;}await waitForOperations();previewQueue.close();clearInterval(timer);clearInterval(updateTimer);globalShortcut.unregisterAll();quitReady=true;app.quit();}).catch(error=>{quitting=false;status(error.message);}).finally(()=>{quitAttempt=null;});});
