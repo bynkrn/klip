@@ -71,7 +71,7 @@ test('monitor settings render and persist through the real offscreen capture set
   await fs.writeFile(scriptFile, `const {app,BrowserWindow}=require('electron'),fs=require('node:fs');app.setPath('userData',${JSON.stringify(path.join(dir, 'profile'))});app.disableHardwareAcceleration();app.whenReady().then(async()=>{let w;try{w=new BrowserWindow({show:false,width:850,height:850,webPreferences:{sandbox:true,contextIsolation:true,offscreen:true}});await w.loadFile(${JSON.stringify(htmlFile)});const out=await w.webContents.executeJavaScript(${JSON.stringify(inspect)});fs.writeFileSync(${JSON.stringify(resultFile)},JSON.stringify(out));}catch(error){fs.writeFileSync(${JSON.stringify(resultFile)},JSON.stringify({error:error.stack}));}finally{w?.destroy();app.quit();}});`);
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
-  const electron = path.join(root, 'tools/build-deps/npm-lock/node_modules/electron/dist/electron.exe');
+  const electron = require('electron');
   const child = spawnSync(electron, [scriptFile], { env, windowsHide: true, encoding: 'utf8', timeout: 30000 });
   assert.equal(child.status, 0, [child.error?.message, child.stdout, child.stderr].filter(Boolean).join('\n'));
   const out = JSON.parse(await fs.readFile(resultFile, 'utf8'));
