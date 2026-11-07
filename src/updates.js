@@ -86,13 +86,13 @@ class Updates extends EventEmitter{
   const previous=this.state();let accept,decline;const shared=new Promise((resolve,reject)=>{accept=resolve;decline=reject;});this.preparing=shared;
   this.performPrepareInstall(options).then(descriptor=>{this.preparing=null;accept(descriptor);},error=>{this.preparing=null;if(this.value.status==='installing')this.update({...previous,error:safeError(error),offer:false});decline(error);});return shared;
  }
- async performPrepareInstall({parentPid,healthTimeoutMs=30000,waitTimeoutMs=60000}={}){
+ async performPrepareInstall({parentPid,healthTimeoutMs=120000,waitTimeoutMs=60000,language='tr',showProgress=true}={}){
   if(!this.packaged)throw new Error('Geliştirme kopyası üzerine güncelleme kurulamaz; paketlenmiş uygulamayı aç.');if(this.value.status!=='ready'||!this.archivePath||!this.release)throw new Error('Doğrulanmış güncelleme henüz hazır değil.');if(!Number.isInteger(parentPid)||parentPid<=0)throw new Error('Geçersiz uygulama işlemi.');
   const appRoot=path.resolve(this.appRoot),cacheDir=path.resolve(this.cacheDir);if(appRoot===path.parse(appRoot).root||!path.isAbsolute(this.appRoot)||!path.isAbsolute(this.cacheDir)||inside(cacheDir,appRoot)||inside(appRoot,cacheDir))throw new Error('Güvenli uygulama ve güncelleme klasörleri gerekli.');
   this.update({status:'installing',offer:false,error:''});
   const actual=await digest(this.archivePath),manifest=this.release.manifest;if(actual.size!==manifest.size||actual.sha256!==manifest.sha256)throw new Error('Güncelleme hash/boyut doğrulaması başarısız.');
   const operationDir=path.join(cacheDir,'install-'+crypto.randomBytes(16).toString('hex'));await fs.mkdir(operationDir,{recursive:true});const helperPath=path.join(operationDir,'update-install.exe'),jobFile=path.join(operationDir,'job.json');await fs.copyFile(this.installerPath,helperPath);
-  const job={schema:1,appRoot,cacheDir,archivePath:path.resolve(this.archivePath),sha256:manifest.sha256,size:manifest.size,version:manifest.version,parentPid,healthTimeoutMs,waitTimeoutMs};await fs.writeFile(jobFile,JSON.stringify(job,null,2),{flag:'wx'});this.update({status:'installing',offer:false});return{helperPath,args:['--job',jobFile],jobFile};
+  const job={schema:1,appRoot,cacheDir,archivePath:path.resolve(this.archivePath),sha256:manifest.sha256,size:manifest.size,version:manifest.version,parentPid,healthTimeoutMs,waitTimeoutMs,language:language==='en'?'en':'tr',showProgress:showProgress!==false,resumeBuffer:true};await fs.writeFile(jobFile,JSON.stringify(job,null,2),{flag:'wx'});this.update({status:'installing',offer:false});return{helperPath,args:['--job',jobFile],jobFile};
  }
 }
 module.exports={Updates,GhTransport,PublicGitHub,healthAckPath};

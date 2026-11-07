@@ -66,6 +66,8 @@ jobs:
         shell: pwsh
         run: |
           ./tools/package.ps1
+          node tests/update-startup-package-smoke.js dist/Ember-win32-x64/resources/app
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged update startup verification failed' }
           ./tools/build-installer.ps1 -SkipRuntimeBuild -RuntimeDirectory dist/Ember-win32-x64
           $version=(Get-Content package.json -Raw | ConvertFrom-Json).version
           Compress-Archive -LiteralPath dist/Ember-win32-x64 -DestinationPath "dist/Ember-v$version-win32-x64.zip"

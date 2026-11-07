@@ -17,6 +17,7 @@ const {Updates,healthAckPath}=require('./updates');
 const {captureSettingsChanged}=require('./settings-policy');
 const {translate}=require('./i18n');
 const updateConfig=require('./update-config.json');
+const {updateLaunchContext,completeUpdateStartup,readInstallHistory}=require('./update-session');
 const {STARTUP_ARG,shouldStartHidden,reconcileStartup}=require('./startup');
 const {userDataDirectory,migrateDefaultClipFolder,relocateRestoredClip}=require('./brand-migration');
 const {normalizeVideoQuality}=require('./video-quality');
@@ -46,6 +47,7 @@ const trashMedia=new TrashMedia({trash:recycle,cacheDir:path.join(app.getPath('u
 const editorAudio=new EditorAudio({cacheDir:path.join(app.getPath('userData'),'previews'),resolve:id=>known.get(id),run,asset,revoke:url=>assets.delete(new URL(url).pathname.slice(1))});
 const timeline=new TimelinePreviews({cacheDir:path.join(app.getPath('userData'),'previews'),resolve:id=>known.get(id),run,asset,revoke:url=>assets.delete(new URL(url).pathname.slice(1))});
 const updateCache=path.join(app.getPath('userData'),'updates');
+const updateContext=updateLaunchContext(process.argv,app.getVersion());let completedUpdateHealth=null;
 const updates=new Updates({currentVersion:app.getVersion(),...updateConfig,ghPath:path.join(toolDir,'github','gh.exe'),cacheDir:updateCache,appRoot:path.dirname(process.execPath),installerPath:path.join(toolDir,'update-install.exe'),packaged:app.isPackaged});
 updates.on('state',update=>status('',{update}));
 const projectTransfers=new ProjectTransfer({directory:path.join(app.getPath('userData'),'project-imports'),resolveClip:id=>known.get(id),getEditor:()=>state?.editorExecutable||'',probe});
@@ -78,22 +80,23 @@ async function restartAfterAudioChange(){
   finally{busy=false;}
  });}catch(error){status('Ses aygıtı değişimi tamamlanamadı: '+error.message);}finally{deviceChanging=false;previewQueue.wake();}
 }
+async function refreshInstallHistory(){let installation=await readInstallHistory({cacheDir:updateCache,appRoot:path.dirname(process.execPath),currentVersion:app.getVersion()});if(completedUpdateHealth&&(!installation||installation.version===app.getVersion()))installation={...installation,version:app.getVersion(),status:"installed",phase:"completed",bufferRunning:completedUpdateHealth.bufferRunning,bufferError:completedUpdateHealth.bufferError||""};updates.update({installation});return installation;}
 async function acknowledgeUpdate(){
- const nonce=process.argv.find(arg=>arg.startsWith('--update-health='))?.slice('--update-health='.length),version=process.argv.find(arg=>arg.startsWith('--update-version='))?.slice('--update-version='.length);if(!nonce||version!==app.getVersion())return;
- for(let i=0;i<100;i++){if(await win.webContents.executeJavaScript("document.documentElement.dataset.nativeReady==='true'")){const target=healthAckPath(updateCache,nonce);await fs.mkdir(updateCache,{recursive:true});const temp=target+'.tmp';await fs.writeFile(temp,JSON.stringify({nonce,version:app.getVersion(),pid:process.pid}),{flag:'wx'});await fs.rename(temp,target);return;}await new Promise(resolve=>setTimeout(resolve,100));}
- throw new Error('Güncelleme sonrası arayüz başlatılamadı.');
+ if(!updateContext)return;
+ const health=await completeUpdateStartup({context:updateContext,cacheDir:updateCache,waitForUI:async()=>{for(let i=0;i<300;i++){if(await win.webContents.executeJavaScript("document.documentElement.dataset.nativeReady==='true'"))return;await new Promise(resolve=>setTimeout(resolve,100));}throw new Error('Güncelleme sonrası arayüz başlatılamadı.');},startBuffer:()=>trackOperation(start),getRunning:()=>!!capture.running,show:showMainWindow});
+ completedUpdateHealth=health;await refreshInstallHistory();if(health.bufferError)status('Güncelleme tamamlandı; tampon başlatılamadı: '+health.bufferError);else status('Güncelleme tamamlandı; tampon hazır.');
 }
 async function assertExternalLibrary(){const appRoot=await fs.realpath(path.dirname(process.execPath)),folder=await fs.realpath(state.folder).catch(()=>path.resolve(state.folder)),relative=path.relative(appRoot,folder);if(relative===''||relative!=='..'&&!relative.startsWith('..'+path.sep)&&!path.isAbsolute(relative))throw new Error('Güncellemeden önce klip klasörünü uygulama klasörünün dışına taşı.');}
 async function applyUpdate(){
  if(updating)return updates.state();if(busy||saving||operations.size)throw new Error('Devam eden işlemin bitmesini bekle.');
- updating=true;return trackOperation(async()=>{try{
+ const captureWasRunning=!!capture.running;let helperStarted=false;updating=true;return trackOperation(async()=>{try{
   await assertExternalLibrary();
-  const plan=await updates.prepareInstall({parentPid:process.pid});
-  if(capture.running){const clips=await updateMediaScope.run(true,()=>saveClipFile());status('Güncelleme öncesi tampon klip olarak korundu.',{clips});}
-  await assertExternalLibrary();await capture.stop();
-  await new Promise((resolve,reject)=>{const child=spawn(plan.helperPath,plan.args,{detached:true,windowsHide:true,stdio:'ignore'});child.once('error',reject);child.once('spawn',()=>{child.unref();resolve();});});
+  const installation=await refreshInstallHistory();if(installation?.status==='installing')throw new Error('Başka bir güncelleme işlemi sürüyor.');updates.update({installPhase:'verifying'});const plan=await updates.prepareInstall({parentPid:process.pid,language:state.language,showProgress:true});
+  if(capture.running){updates.update({installPhase:'preserving-buffer'});const clips=await updateMediaScope.run(true,()=>saveClipFile());status('Güncelleme öncesi tampon klip olarak korundu.',{clips});}
+  await assertExternalLibrary();updates.update({installPhase:'stopping-capture'});await capture.stop();updates.update({installPhase:'waiting-exit'});
+  await new Promise((resolve,reject)=>{const child=spawn(plan.helperPath,plan.args,{cwd:path.dirname(plan.helperPath),detached:true,windowsHide:true,stdio:'ignore'});child.once('error',reject);child.once('spawn',()=>{helperStarted=true;child.unref();resolve();});});
   app.quit();return updates.state();
- }catch(error){updating=false;previewQueue.wake();const verified=!!updates.archivePath&&!!updates.release;updates.failure(error);if(verified)updates.update({status:'ready'});throw error;}});
+ }catch(error){updating=false;if(captureWasRunning&&!helperStarted&&!capture.running)await start().catch(restart=>status('Tampon yeniden başlatılamadı: '+restart.message));previewQueue.wake();const verified=!!updates.archivePath&&!!updates.release;updates.failure(error);if(verified)updates.update({status:'ready'});throw error;}});
 }
 function run(name,args){if(updating&&!updateMediaScope.getStore())return Promise.reject(new Error('Güncelleme hazırlanıyor.'));return trackOperation(()=>new Promise((resolve,reject)=>{const p=spawn(path.join(toolDir,name+'.exe'),mediaArguments(name,args),{windowsHide:true,stdio:['ignore','pipe','pipe']});lowerMediaPriority(p);let out='',err='';p.stdout.on('data',b=>out+=b);p.stderr.on('data',b=>err=(err+b).slice(-10000));p.on('error',reject);p.on('close',c=>c===0?resolve(out):reject(new Error(err||name+' başarısız'))); }));}
 async function probe(file){return JSON.parse(await run('ffprobe',['-v','error','-show_streams','-show_format','-of','json',file]));}
@@ -174,8 +177,8 @@ handle('editor-timeline',payload=>timeline.get(payload));
 handle('editor-audio-preferences',payload=>trackOperation(()=>audioPreferences.handle(payload,known.get(payload?.id))));
 handle('editor-audio-waveform',payload=>trackOperation(()=>waveforms.get(payload)));
 handle('editor-audio-waveform-cancel',({id})=>{waveforms.invalidate(id);return true;});
-handle('update-state',()=>updates.state());
-handle('update-check',()=>updates.check({manual:true,source:'manual'}));
+handle('update-state',async()=>{await refreshInstallHistory();return updates.state();});
+handle('update-check',async()=>{await refreshInstallHistory();return updates.check({manual:true,source:'manual'});});
 handle('update-download',()=>updates.download());
 handle('update-login',()=>updates.login());
 handle('update-install',applyUpdate);
@@ -196,13 +199,13 @@ app.whenReady().then(async()=>{
  protocol.handle('klipmedia',async req=>{if(quitting||updating)return new Response(null,{status:404});try{const value=assets.get(new URL(req.url).pathname.slice(1)),file=typeof value==='function'?await value():value;return file?fileResponse(file,req):new Response('Not found',{status:404});}catch{return new Response('Not found',{status:404});}});
  const audioSyncProfile=await fs.readFile(path.join(app.getPath('userData'),'audio-sync.json'),'utf8').then(JSON.parse).catch(()=>null);capture=new Capture(path.join(root,'engine/obs'),{audioSyncProfile});capture.config=state;capture.bufferDir=path.join(app.getPath('userData'),'buffer');capture.audioSnapshotRoot=path.join(capture.bufferDir,'audio-snapshots');capture.on('recovery-required',detail=>status(detail?.message||'',{recovery:recovery.state()}));capture.on('recoveries',()=>status('',{recovery:recovery.state()}));await capture.refreshRecoveries?.().catch(error=>status(error.message));capture.on('audio-sync',audioSync=>status('',{audioSync}));capture.on('audio-device-changed',restartAfterAudioChange);capture.on('automatic-replay',preserveAutomaticReplay);capture.on('warning',message=>status(message));capture.on('audio',audio=>status('',{audio}));capture.on('focus',focus=>status('',{focus}));capture.on('capture-source',source=>status(source.method==='window'?'Windows pencere yakalamaya geçildi.':'Oyun yakalama etkin.',{captureSource:source.method}));
  capture.on('displays',displays=>status('',{displays}));capture.on('display-selection',displaySelection=>status('',{displaySelection}));
- win=new BrowserWindow({width:1280,height:800,minWidth:850,minHeight:650,show:revealRequested||!shouldStartHidden(state,process.argv),backgroundColor:'#19171d',frame:false,title:'Ember',icon:path.join(__dirname,'icon.ico'),autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+ win=new BrowserWindow({width:1280,height:800,minWidth:850,minHeight:650,show:!updateContext&&(revealRequested||!shouldStartHidden(state,process.argv)),backgroundColor:'#19171d',frame:false,title:'Ember',icon:path.join(__dirname,'icon.ico'),autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
  win.webContents.setWindowOpenHandler(({url})=>{if(url==='https://github.com/login/device'||url==='https://github.com/login/device/')shell.openExternal(url).catch(error=>status(error.message));return{action:'deny'};});win.webContents.on('will-navigate',(e,url)=>{if(url!==require('node:url').pathToFileURL(path.join(__dirname,'index.html')).href)e.preventDefault();});await win.loadFile(path.join(__dirname,'index.html'));
  projectTransfers.initialize().catch(error=>status('Aktarım geçmişi okunamadı: '+error.message));
  try{bindHotkey(state.hotkey);}catch(e){status(e.message);}timer=setInterval(()=>status(''),1000);win.on('focus',()=>previewQueue.wake());win.on('close',e=>{if(!quitting){e.preventDefault();win.hide();}});
  const icon=nativeImage.createFromPath(path.join(__dirname,'icon.png'));tray=new Tray(icon);tray.setToolTip('Ember');refreshTray();tray.on('double-click',showMainWindow);
  if(startup.status==='os-disabled')status('Windows başlangıç izni kapalı. Görev Yöneticisi → Başlangıç Uygulamaları bölümünden Ember’ı etkinleştir.');if(startup.status==='error')status('Windows başlangıç kaydı onarılamadı: '+startup.message);
- if(state.autoBuffer)trackOperation(start).catch(e=>status(e.message));
+ if(state.autoBuffer&&!updateContext)trackOperation(start).catch(e=>status(e.message));
  await acknowledgeUpdate().catch(error=>status(error.message));
  updates.check({source:'startup'}).catch(error=>updates.failure(error));updateTimer=setInterval(()=>{if(!quitting&&!updating)updates.check({source:'background'}).catch(error=>updates.failure(error));},15*60*1000);updateTimer.unref();
 });
