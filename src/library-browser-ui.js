@@ -25,7 +25,7 @@
     const t=(tr,en)=>getLanguage()==='en'?en:tr;
     const el=(tag,cls,text)=>{const n=doc.createElement(tag);if(cls)n.className=cls;if(text!=null)n.textContent=text;n.dataset.i18n='off';return n;};
     const glyph=name=>{const n=doc.createElement('i');n.dataset.lucide=name;n.setAttribute('aria-hidden','true');return n;};
-    const button=(id,label,icon,cls='sk-button')=>{const b=el('button',cls);b.id=id;b.type='button';if(icon)b.append(glyph(icon));const s=el('span','',label);b.append(s);return b;};
+    const button=(id,label,icon,cls='sk-button')=>{const b=el('button',cls);b.id=id;b.type='button';if(icon)b.append(glyph(icon));if(!cls.split(' ').includes('sk-icon-button')||label)b.append(el('span','',label));return b;};
     const style=el('style');style.textContent=`
       #sunset-klip-organized .sk-library-tools{display:flex;align-items:center;gap:8px;flex-shrink:0;min-width:0}
       #sunset-klip-organized .sk-library-search{display:flex;align-items:center;gap:8px;flex:1;min-width:100px;background:var(--sk-panel);border:1px solid var(--sk-line);border-radius:7px;padding:0 11px;height:36px;color:var(--sk-muted)}
@@ -37,7 +37,8 @@
       #sunset-klip-organized .sk-library-filter-panel .sk-field-pair{gap:10px}
       #sunset-klip-organized .sk-library-filter-panel .sk-field{margin-bottom:12px;min-width:0}
       #sunset-klip-organized .sk-library-filter-panel input,#sunset-klip-organized .sk-library-filter-panel select{width:100%;min-width:0;box-sizing:border-box;color-scheme:dark}
-      #sunset-klip-organized .sk-clip-favorite{position:absolute;right:7px;top:7px;width:27px;height:27px;border:1px solid #ffffff24;border-radius:6px;background:#17141bc9;color:#e6dfe7;display:grid;place-items:center;opacity:0;cursor:pointer;z-index:2}
+      #sunset-klip-organized .sk-clip-favorite{position:absolute;right:7px;top:7px;width:27px;height:27px;padding:0;line-height:0;border:1px solid #ffffff24;border-radius:6px;background:#17141bc9;color:#e6dfe7;display:grid;place-items:center;opacity:0;cursor:pointer;z-index:2}
+      #sunset-klip-organized .sk-clip-favorite svg{display:block}
       #sunset-klip-organized .sk-card:hover .sk-clip-favorite,#sunset-klip-organized .sk-clip-favorite:focus-visible,#sunset-klip-organized .sk-clip-favorite[aria-pressed=true]{opacity:1}
       #sunset-klip-organized .sk-clip-favorite[aria-pressed=true] svg{fill:currentColor}
       #sunset-klip-organized .sk-row-actions .sk-clip-favorite{position:static;opacity:1;border:0;background:none;width:25px}

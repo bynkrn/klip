@@ -232,7 +232,7 @@
     const t=(tr,en)=>getLanguage()==='en'?en:tr;
     const el=(tag,cls,text)=>{const n=doc.createElement(tag);if(cls)n.className=cls;if(text!=null)n.textContent=text;n.dataset.i18n='off';return n;};
     const glyph=name=>{const n=doc.createElement('i');n.dataset.lucide=name;n.setAttribute('aria-hidden','true');return n;};
-    const button=(id,label,icon,cls='sk-button')=>{const b=el('button',cls);b.id=id;b.type='button';if(icon)b.append(glyph(icon));const s=el('span','',label);b.append(s);return b;};
+    const button=(id,label,icon,cls='sk-button')=>{const b=el('button',cls);b.id=id;b.type='button';if(icon)b.append(glyph(icon));if(!cls.split(' ').includes('sk-icon-button')||label)b.append(el('span','',label));return b;};
     const style=el('style');style.textContent=`
       #sunset-klip-organized .sk-library-tools{display:flex;align-items:center;gap:8px;flex-shrink:0;min-width:0}
       #sunset-klip-organized .sk-library-search{display:flex;align-items:center;gap:8px;flex:1;min-width:100px;background:var(--sk-panel);border:1px solid var(--sk-line);border-radius:7px;padding:0 11px;height:36px;color:var(--sk-muted)}
@@ -244,7 +244,8 @@
       #sunset-klip-organized .sk-library-filter-panel .sk-field-pair{gap:10px}
       #sunset-klip-organized .sk-library-filter-panel .sk-field{margin-bottom:12px;min-width:0}
       #sunset-klip-organized .sk-library-filter-panel input,#sunset-klip-organized .sk-library-filter-panel select{width:100%;min-width:0;box-sizing:border-box;color-scheme:dark}
-      #sunset-klip-organized .sk-clip-favorite{position:absolute;right:7px;top:7px;width:27px;height:27px;border:1px solid #ffffff24;border-radius:6px;background:#17141bc9;color:#e6dfe7;display:grid;place-items:center;opacity:0;cursor:pointer;z-index:2}
+      #sunset-klip-organized .sk-clip-favorite{position:absolute;right:7px;top:7px;width:27px;height:27px;padding:0;line-height:0;border:1px solid #ffffff24;border-radius:6px;background:#17141bc9;color:#e6dfe7;display:grid;place-items:center;opacity:0;cursor:pointer;z-index:2}
+      #sunset-klip-organized .sk-clip-favorite svg{display:block}
       #sunset-klip-organized .sk-card:hover .sk-clip-favorite,#sunset-klip-organized .sk-clip-favorite:focus-visible,#sunset-klip-organized .sk-clip-favorite[aria-pressed=true]{opacity:1}
       #sunset-klip-organized .sk-clip-favorite[aria-pressed=true] svg{fill:currentColor}
       #sunset-klip-organized .sk-row-actions .sk-clip-favorite{position:static;opacity:1;border:0;background:none;width:25px}
@@ -596,7 +597,7 @@
 #sunset-klip-organized .sk-card-open:focus-visible,#sunset-klip-organized .sk-row-open:focus-visible{outline:none}
 #sunset-klip-organized .sk-card[data-selected=false] .sk-card-open:focus-visible .sk-thumb,#sunset-klip-organized tr[data-selected=false] .sk-row-open:focus-visible .sk-row-thumb{outline:2px solid var(--sk-amber);outline-offset:2px}
 #sunset-klip-organized .sk-view-toggle{display:flex;gap:3px;background:var(--sk-panel);border:1px solid var(--sk-line);border-radius:6px;padding:3px}
-#sunset-klip-organized .sk-view-toggle button{width:34px;height:29px;display:grid;place-items:center;border-radius:4px;color:var(--sk-muted);background:transparent}
+#sunset-klip-organized .sk-view-toggle button{width:34px;height:29px;padding:0;display:grid;place-items:center;border-radius:4px;color:var(--sk-muted);background:transparent}
 #sunset-klip-organized .sk-view-toggle button[aria-pressed=true]{background:var(--sk-soft);color:var(--sk-amber)}
 #sunset-klip-organized .sk-library-body{flex:1;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--sk-line) transparent}
 #sunset-klip-organized .sk-group{margin-bottom:28px}
@@ -612,7 +613,7 @@
 #sunset-klip-organized .sk-card-open:hover .sk-thumb img{filter:brightness(1.1)}
 #sunset-klip-organized .sk-card-name{display:block;padding-right:34px;margin-top:8px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #sunset-klip-organized .sk-card-date{display:block;margin-top:3px;padding-right:34px;font-size:12px;color:var(--sk-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#sunset-klip-organized .sk-more{position:absolute;right:0;bottom:10px;width:28px;height:29px;background:transparent;color:var(--sk-muted);display:grid;place-items:center;border-radius:4px}
+#sunset-klip-organized .sk-more{position:absolute;right:0;bottom:10px;width:28px;height:29px;padding:0;background:transparent;color:var(--sk-muted);display:grid;place-items:center;border-radius:4px}
 #sunset-klip-organized .sk-more:hover{background:var(--sk-raised);color:var(--sk-amber)}
 #sunset-klip-organized .sk-list-wrap{width:100%;overflow:visible}
 #sunset-klip-organized .sk-table{width:100%;min-width:0;table-layout:fixed;border-collapse:collapse;text-align:left;font-size:13px}
