@@ -1,4 +1,309 @@
-<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: klipmedia:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'none';"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ember</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#19171d}#sunset-klip-organized{max-width:none!important;height:100vh!important;border:0!important;border-radius:0!important}.sk-export-audio{max-height:180px;overflow:auto}.sk-topbar{-webkit-app-region:drag}.sk-chrome{-webkit-app-region:no-drag;gap:0!important;display:flex!important}.sk-chrome button{width:44px;height:40px}</style><script src="i18n.js"></script><script src="lucide.js"></script></head><body><script>(function(global){
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: klipmedia:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'none';"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ember</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#19171d}#sunset-klip-organized{max-width:none!important;height:100vh!important;border:0!important;border-radius:0!important}.sk-export-audio{max-height:180px;overflow:auto}.sk-topbar{-webkit-app-region:drag}.sk-chrome{-webkit-app-region:no-drag;gap:0!important;display:flex!important}.sk-chrome button{width:44px;height:40px}</style><script src="i18n.js"></script><script src="lucide.js"></script></head><body><script>(function (global) {
+  'use strict';
+
+  function attach({ root, getConfig, setPreference, call, notify = () => {} }) {
+    const document = root.ownerDocument;
+    const grid = root.querySelector('#sk-settings-capture .sk-settings-grid');
+    if (!grid) throw new Error('Capture settings grid is missing.');
+    const names = new Map();
+    let displays = [], selection = null, gameMonitorId = '', running = false;
+    let enumerated = false, loading = false, saving = false, enumerationError = false, saveError = false, refreshAfterSave = false, nativeRevision = 0;
+    const en = () => getConfig().language === 'en';
+    const text = (tr, english) => en() ? english : tr;
+    const create = (tag, className, id) => {
+      const element = document.createElement(tag);
+      if (className) element.className = className;
+      if (id) element.id = id;
+      return element;
+    };
+    const style = create('style');
+    style.textContent = `
+      #sunset-klip-organized #sk-display-settings{min-width:0;max-width:100%}
+      #sunset-klip-organized #sk-display-label{color:var(--sk-muted)}
+      #sunset-klip-organized .sk-display-select-row{display:flex;align-items:center;gap:8px;min-width:0;max-width:100%}
+      #sunset-klip-organized #sk-display-monitor{flex:1;width:100%;min-width:0;text-overflow:ellipsis}
+      #sunset-klip-organized #sk-display-refresh{display:grid;place-items:center;flex:0 0 38px;width:38px;min-height:38px;padding:8px}
+      #sunset-klip-organized #sk-display-refresh svg{width:17px;height:17px}
+      #sunset-klip-organized #sk-display-refresh[aria-busy=true] svg{animation:sk-display-refresh-spin 1s linear infinite}
+      #sunset-klip-organized #sk-display-settings .sk-setting-note{overflow-wrap:anywhere;line-height:1.55}
+      #sunset-klip-organized #sk-display-status{margin-top:10px}
+      #sunset-klip-organized #sk-display-status[data-warning=true],#sunset-klip-organized #sk-display-error{color:var(--sk-amber)}
+      #sunset-klip-organized #sk-display-error,#sunset-klip-organized #sk-display-operation,#sunset-klip-organized #sk-display-lock{margin-top:8px}
+      @keyframes sk-display-refresh-spin{to{transform:rotate(360deg)}}
+      @media(prefers-reduced-motion:reduce){#sunset-klip-organized #sk-display-refresh[aria-busy=true] svg{animation:none}}
+    `;
+    root.append(style);
+    const section = create('section', 'sk-setting-section', 'sk-display-settings');
+    section.dataset.i18n = 'off';
+    section.setAttribute('aria-labelledby', 'sk-display-title');
+    section.innerHTML = '<h2 id="sk-display-title"></h2><div class="sk-field"><label id="sk-display-label" for="sk-display-monitor"></label><div class="sk-display-select-row"><select id="sk-display-monitor" aria-describedby="sk-display-status sk-display-lock sk-display-note"></select><button type="button" class="sk-button sk-ghost" id="sk-display-refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 19.5 9M4.5 15a8 8 0 0 0 13.4 2.9"/></svg></button></div></div><label class="sk-check"><input type="checkbox" id="sk-display-follow-game" aria-describedby="sk-display-follow-help sk-display-lock"><span><span id="sk-display-follow-label"></span><small id="sk-display-follow-help"></small></span></label><p class="sk-setting-note" id="sk-display-note"></p><p class="sk-setting-note" id="sk-display-status" role="status" aria-live="polite"></p><p class="sk-setting-note" id="sk-display-operation" role="status" aria-live="polite" hidden></p><p class="sk-setting-note" id="sk-display-lock" hidden></p><p class="sk-setting-note" id="sk-display-error" role="alert" hidden></p>';
+    grid.append(section);
+    const $ = id => section.querySelector('#' + id);
+    const monitor = $('sk-display-monitor'), follow = $('sk-display-follow-game'), refresh = $('sk-display-refresh');
+    const requestedId = () => typeof getConfig().monitorId === 'string' ? getConfig().monitorId : '';
+    const following = () => getConfig().followGameMonitor === true;
+    const displayName = display => display ? display.name || display.id : '';
+
+    function remember(list) {
+      const seen = new Set();
+      displays = list.filter(display => {
+        if (!display || typeof display.id !== 'string' || !display.id || seen.has(display.id)) return false;
+        seen.add(display.id);
+        if (typeof display.name === 'string' && display.name) names.set(display.id, display.name);
+        return display.available !== false;
+      }).map(display => ({ ...display }));
+      enumerated = true;
+    }
+
+    function currentSelection() {
+      const requestedMonitorId = requestedId(), followGameMonitor = following();
+      const matching = selection && selection.requestedMonitorId === requestedMonitorId && selection.followGameMonitor === followGameMonitor;
+      if (matching && displays.some(display => display.id === selection.activeMonitorId)) return selection;
+      const desired = followGameMonitor && gameMonitorId ? gameMonitorId : requestedMonitorId;
+      const selected = desired && displays.find(display => display.id === desired);
+      const active = selected || displays.find(display => display.primary);
+      const reason = !displays.length ? 'no-displays' : !active ? 'no-primary-display' : selected ? (followGameMonitor && gameMonitorId ? 'game-monitor' : 'selected-monitor') : desired ? (followGameMonitor && gameMonitorId ? 'game-monitor-unavailable' : 'selected-monitor-unavailable') : 'primary';
+      return { requestedMonitorId, followGameMonitor, activeMonitorId: active?.id || '', fallback: !active || Boolean(desired && !selected), reason };
+    }
+
+    function statusText() {
+      const current = currentSelection(), active = displays.find(display => display.id === current.activeMonitorId);
+      if (!enumerated) return text('Ekran listesi yükleniyor…', 'Loading the display list…');
+      if (!displays.length) return text('Kaydedilecek ekran bulunamadı. Ekran bağlantılarını kontrol edip yeniden dene.', 'No display was found for capture. Check the display connections and retry.');
+      if (!active) return text('Birincil ekran bulunamadı. Listeden kullanılabilir bir ekran seç.', 'The primary display was not found. Choose an available display from the list.');
+      const name = displayName(active);
+      if (current.reason === 'monitor-switch-failed') return text('Masaüstü kaynağı değiştirilemedi. Mevcut ekran: ', 'The desktop source could not be switched. Current display: ') + name;
+      if (current.fallback) return text(current.reason === 'game-monitor-unavailable' ? 'Oyunun ekranı kullanılamıyor. Birincil ekran: ' : 'Seçili ekran kullanılamıyor. Birincil ekran: ', current.reason === 'game-monitor-unavailable' ? "The game's display is unavailable. Primary display: " : 'The selected display is unavailable. Primary display: ') + name + text('. Kayıtlı ekran seçimin korunur.', '. Your saved display choice is retained.');
+      if (current.reason === 'game-monitor') return text('Oyunun Ekranı İzleniyor: ', 'Following The Game: ') + name;
+      return (following() ? text('Oyun Bulunana Kadar: ', 'Until A Game Is Found: ') : text('Masaüstü Kaynağı: ', 'Desktop Source: ')) + name;
+    }
+
+    function errorText() {
+      if (saveError) return text('Ekran ayarı kaydedilemedi. Önceki seçimin korunuyor; yeniden dene.', 'The display setting could not be saved. Your previous choice is retained; retry.');
+      if (enumerationError) return text('Ekranlar yenilenemedi. Son ekran listesi korunuyor; yeniden dene.', 'Displays could not be refreshed. The last display list is retained; retry.');
+      return '';
+    }
+
+    function render() {
+      const value = requestedId(), current = currentSelection();
+      const title = text('Masaüstü Ekranı', 'Desktop Display');
+      $('sk-display-title').textContent = title;
+      $('sk-display-label').textContent = title;
+      monitor.setAttribute('aria-label', title);
+      const options = [];
+      const option = (id, label, disabled = false) => {
+        const element = create('option');
+        element.value = id;
+        element.textContent = label;
+        element.disabled = disabled;
+        options.push(element);
+      };
+      option('', text('Sistem Birincil Ekranı', 'System Primary Display'));
+      for (const display of displays) {
+        const resolution = Number(display.width) > 0 && Number(display.height) > 0 ? ` · ${display.width} × ${display.height}` : '';
+        option(display.id, displayName(display) + resolution + (display.primary ? text(' · Birincil', ' · Primary') : ''));
+      }
+      if (value && !displays.some(display => display.id === value)) option(value, (names.get(value) || text('Kayıtlı Ekran', 'Saved Display')) + text(' · Kullanılamıyor', ' · Unavailable'), true);
+      monitor.replaceChildren(...options);
+      monitor.value = value;
+      follow.checked = following();
+      monitor.disabled = follow.disabled = running || saving;
+      $('sk-display-follow-label').textContent = text('Oyunun Ekranını Takip Et', "Follow The Game's Display");
+      $('sk-display-follow-help').textContent = text('Oyun başka ekrana taşındığında masaüstü kaynağı da o ekranı izler.', 'The desktop source follows the detected game when it moves to another display.');
+      $('sk-display-note').textContent = getConfig().mode === 'game' ? text('Bu seçim masaüstü yakalama içindir. Yalnız Oyun modunda oyun yakalamayı değiştirmez.', 'This setting is for desktop capture. It does not change game capture in Game Only mode.') : text('Bu seçim masaüstü yakalamayı etkiler; oyun yakalama kaynağını değiştirmez.', 'This setting controls desktop capture; it does not change the game capture source.');
+      $('sk-display-status').textContent = statusText();
+      $('sk-display-status').dataset.warning = String(enumerated && (current.fallback || current.reason === 'monitor-switch-failed'));
+      $('sk-display-lock').hidden = !running;
+      $('sk-display-lock').textContent = text('Ekran ayarlarını değiştirmek için önce tamponu durdur.', 'Stop the buffer before changing display settings.');
+      const operation = $('sk-display-operation');
+      operation.hidden = !loading && !saving;
+      operation.textContent = saving ? text('Kaydediliyor…', 'Saving…') : text('Ekranlar Yenileniyor…', 'Refreshing Displays…');
+      const error = $('sk-display-error');
+      error.textContent = errorText();
+      error.hidden = !error.textContent;
+      const refreshLabel = loading ? text('Ekranlar Yenileniyor…', 'Refreshing Displays…') : enumerationError ? text('Ekranları Yeniden Dene', 'Retry Display List') : text('Ekranları Yenile', 'Refresh Displays');
+      refresh.setAttribute('aria-label', refreshLabel);
+      refresh.title = refreshLabel;
+      refresh.setAttribute('aria-busy', String(loading));
+      refresh.disabled = loading;
+    }
+
+    function receive(incoming) {
+      if (!incoming || typeof incoming !== 'object') return;
+      if (typeof incoming.running === 'boolean') running = incoming.running;
+      if (Array.isArray(incoming.displays)) {
+        nativeRevision++;
+        if (incoming.displaySelection?.reason !== 'enumeration-failed') {
+          remember(incoming.displays);
+          enumerationError = false;
+        }
+        selection = null;
+      }
+      if (incoming.displaySelection && typeof incoming.displaySelection === 'object') {
+        nativeRevision++;
+        selection = { ...incoming.displaySelection };
+        gameMonitorId = typeof selection.gameMonitorId === 'string' ? selection.gameMonitorId : '';
+        if (selection.reason === 'enumeration-failed') enumerationError = true;
+      }
+      render();
+    }
+
+    async function refreshDisplays() {
+      if (loading) return;
+      loading = true;
+      const revision = nativeRevision;
+      render();
+      try {
+        const result = await call('capture-displays');
+        if (!Array.isArray(result?.displays)) throw new Error('Invalid display list.');
+        if (revision !== nativeRevision) return;
+        receive({ displays: result.displays, displaySelection: result.selection });
+      } catch (_) {
+        if (revision !== nativeRevision) return;
+        enumerationError = true;
+        notify(text('Ekranlar yenilenemedi. Yeniden deneyebilirsin.', 'Displays could not be refreshed. You can retry.'));
+      } finally {
+        loading = false;
+        render();
+        if (refreshAfterSave) {
+          refreshAfterSave = false;
+          refreshDisplays();
+        }
+      }
+    }
+
+    async function save(key, value) {
+      if (running || saving) { render(); return; }
+      if (getConfig()[key] === value || key === 'followGameMonitor' && following() === value) { render(); return; }
+      saving = true;
+      saveError = false;
+      render();
+      let accepted = false;
+      try {
+        await setPreference(key, value);
+        accepted = true;
+      } catch (_) {
+        saveError = true;
+        notify(errorText());
+      } finally {
+        saving = false;
+        render();
+      }
+      if (accepted) {
+        if (loading) refreshAfterSave = true;
+        else refreshDisplays();
+      }
+    }
+
+    monitor.addEventListener('change', () => save('monitorId', monitor.value));
+    follow.addEventListener('change', () => save('followGameMonitor', follow.checked));
+    refresh.addEventListener('click', refreshDisplays);
+    render();
+    refreshDisplays();
+    return { render, receive };
+  }
+
+  global.EmberDisplaySettings = { attach };
+})(globalThis);
+</script><script>(function(scope){
+  const fold=value=>String(value||'').normalize('NFC').toLocaleLowerCase('tr-TR').replace(/ı/g,'i');
+  function dateKey(clip,now=Date.now()){
+    let value=Number(clip.mtime);
+    if(!Number.isFinite(value)){if(clip.day==='today')value=now;else if(clip.day==='yesterday'){const d=new Date(now);d.setDate(d.getDate()-1);value=d.getTime();}else return 'unknown';}
+    const d=new Date(value);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function dateLabel(clip,language='tr',now=Date.now()){
+    const key=dateKey(clip,now),today=dateKey({mtime:now}),yesterday=new Date(now);yesterday.setDate(yesterday.getDate()-1);
+    if(key===today)return language==='en'?'Today':'Bugün';if(key===dateKey({mtime:yesterday.getTime()}))return language==='en'?'Yesterday':'Dün';
+    if(key==='unknown')return language==='en'?'Other Clips':'Diğer Klipler';
+    return new Date(key+'T12:00:00').toLocaleDateString(language==='en'?'en-GB':'tr-TR',{day:'numeric',month:'long',year:'numeric'});
+  }
+  function filterClips(clips,filters={}){
+    const terms=fold(filters.query).trim().split(/\s+/).filter(Boolean),tag=fold(filters.tag);
+    return clips.filter(clip=>{
+      const tags=Array.isArray(clip.tags)?clip.tags:[],text=fold([clip.name,clip.fileName,clip.game,...tags].join(' ')),date=dateKey(clip);
+      return terms.every(term=>text.includes(term))&&(!filters.favorite||clip.favorite===true)&&(!tag||tags.some(value=>fold(value)===tag))&&
+        (!filters.from||date!=='unknown'&&date>=filters.from)&&(!filters.to||date!=='unknown'&&date<=filters.to)&&
+        (filters.min===''||filters.min==null||Number(clip.seconds)>=Number(filters.min))&&(filters.max===''||filters.max==null||Number(clip.seconds)<=Number(filters.max));
+    });
+  }
+  function attach({root,call,getClips,getSelection,getLanguage,onClips,refresh,notify,decorate}){
+    const doc=root.ownerDocument,$=id=>doc.getElementById(id),state={query:'',favorite:false,tag:'',from:'',to:'',min:'',max:''};let working=false,editing=null;
+    const t=(tr,en)=>getLanguage()==='en'?en:tr;
+    const el=(tag,cls,text)=>{const n=doc.createElement(tag);if(cls)n.className=cls;if(text!=null)n.textContent=text;n.dataset.i18n='off';return n;};
+    const glyph=name=>{const n=doc.createElement('i');n.dataset.lucide=name;n.setAttribute('aria-hidden','true');return n;};
+    const button=(id,label,icon,cls='sk-button')=>{const b=el('button',cls);b.id=id;b.type='button';if(icon)b.append(glyph(icon));const s=el('span','',label);b.append(s);return b;};
+    const style=el('style');style.textContent=`
+      #sunset-klip-organized .sk-library-tools{display:flex;align-items:center;gap:8px;flex-shrink:0;min-width:0}
+      #sunset-klip-organized .sk-library-search{display:flex;align-items:center;gap:8px;flex:1;min-width:100px;background:var(--sk-panel);border:1px solid var(--sk-line);border-radius:7px;padding:0 11px;height:36px;color:var(--sk-muted)}
+      #sunset-klip-organized .sk-library-search input{width:100%;min-width:0;background:none;border:0;padding:0;outline:none;color:var(--sk-text);font:inherit;font-size:13px}
+      #sunset-klip-organized .sk-library-tools button{height:36px;white-space:nowrap}
+      #sunset-klip-organized .sk-library-tools button[aria-pressed=true],#sunset-klip-organized .sk-clip-favorite[aria-pressed=true]{color:var(--sk-amber);border-color:var(--sk-amber)}
+      #sunset-klip-organized .sk-library-filter-panel{position:fixed;inset:auto;margin:0;width:min(360px,calc(100vw - 28px));box-sizing:border-box;padding:18px;background:var(--sk-panel);color:var(--sk-text);border:1px solid var(--sk-line);border-radius:10px;box-shadow:0 18px 45px #0008;z-index:50}
+      #sunset-klip-organized .sk-library-filter-panel h3{margin:0 0 14px;font-size:14px}
+      #sunset-klip-organized .sk-library-filter-panel .sk-field-pair{gap:10px}
+      #sunset-klip-organized .sk-library-filter-panel .sk-field{margin-bottom:12px;min-width:0}
+      #sunset-klip-organized .sk-library-filter-panel input,#sunset-klip-organized .sk-library-filter-panel select{width:100%;min-width:0;box-sizing:border-box;color-scheme:dark}
+      #sunset-klip-organized .sk-clip-favorite{position:absolute;right:7px;top:7px;width:27px;height:27px;border:1px solid #ffffff24;border-radius:6px;background:#17141bc9;color:#e6dfe7;display:grid;place-items:center;opacity:0;cursor:pointer;z-index:2}
+      #sunset-klip-organized .sk-card:hover .sk-clip-favorite,#sunset-klip-organized .sk-clip-favorite:focus-visible,#sunset-klip-organized .sk-clip-favorite[aria-pressed=true]{opacity:1}
+      #sunset-klip-organized .sk-clip-favorite[aria-pressed=true] svg{fill:currentColor}
+      #sunset-klip-organized .sk-row-actions .sk-clip-favorite{position:static;opacity:1;border:0;background:none;width:25px}
+      #sunset-klip-organized .sk-table th:last-child{width:122px}
+      #sunset-klip-organized .sk-clip-tags{display:flex;gap:4px;margin-top:5px;overflow:hidden;max-width:100%;pointer-events:none}
+      #sunset-klip-organized .sk-clip-tags span{font-size:10px;line-height:17px;padding:0 6px;max-width:85px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:4px;background:var(--sk-soft);color:var(--sk-muted)}
+      #sunset-klip-organized .sk-library-empty{display:flex;align-items:center;justify-content:center;flex-direction:column;min-height:160px;gap:9px;color:var(--sk-muted);text-align:center;padding:20px}
+      #sunset-klip-organized .sk-library-empty strong{color:var(--sk-text);font-size:16px}
+      #sunset-klip-organized #sk-metadata-dialog{width:min(440px,calc(100vw - 42px))}
+      #sunset-klip-organized .sk-metadata-source{overflow-wrap:anywhere;font-size:12px;color:var(--sk-muted);margin:4px 0 15px}
+      #sunset-klip-organized .sk-metadata-error{color:#ffa779;min-height:1em;font-size:12px}
+      @media(max-width:950px){#sunset-klip-organized .sk-library-tools{gap:6px}#sunset-klip-organized .sk-library-tools button{padding-inline:10px}#sunset-klip-organized .sk-library-tools #sk-library-favorites span{display:none}#sunset-klip-organized .sk-table th:last-child{width:112px}}
+    `;root.append(style);
+    const toolbar=el('div','sk-library-tools');toolbar.id='sk-library-tools';toolbar.setAttribute('role','search');
+    const search=el('label','sk-library-search');search.append(glyph('search'));const query=el('input');query.id='sk-library-search';query.type='search';search.append(query);
+    const favorites=button('sk-library-favorites','','star'),filters=button('sk-library-filters','','sliders-horizontal'),clear=button('sk-library-clear','','x','sk-icon-button');clear.hidden=true;
+    toolbar.append(search,favorites,filters,clear);$('sk-game-folders').before(toolbar);
+    const panel=el('div','sk-library-filter-panel');panel.id='sk-library-filter-panel';panel.setAttribute('popover','auto');panel.setAttribute('role','group');filters.setAttribute('aria-controls',panel.id);filters.setAttribute('aria-expanded','false');panel.addEventListener('toggle',event=>filters.setAttribute('aria-expanded',String(event.newState==='open')));const heading=el('h3');heading.id='sk-library-filter-heading';panel.setAttribute('aria-labelledby',heading.id);panel.append(heading);
+    const fields={};
+    const field=(key,type)=>{const label=el('label','sk-field'),title=el('span'),input=el(type==='select'?'select':'input');if(type!=='select')input.type=type;input.id='sk-library-'+key;label.append(title,input);fields[key]={title,input};input.addEventListener('input',()=>{state[key]=input.value;changed();});return label;};
+    panel.append(field('tag','select'));const dates=el('div','sk-field-pair');dates.append(field('from','date'),field('to','date'));panel.append(dates);const durations=el('div','sk-field-pair');durations.append(field('min','number'),field('max','number'));panel.append(durations);
+    for(const key of ['min','max']){fields[key].input.min='0';fields[key].input.step='1';}
+    const note=el('p','sk-setting-note');panel.append(note);root.append(panel);
+    const dialog=el('dialog','sk-dialog');dialog.id='sk-metadata-dialog';const form=el('form');form.method='dialog';const title=el('h2'),source=el('p','sk-metadata-source'),nameLabel=el('label','sk-field'),nameTitle=el('span'),name=el('input');name.id='sk-metadata-name';name.type='text';name.maxLength=200;nameLabel.append(nameTitle,name);
+    const tagsLabel=el('label','sk-field'),tagsTitle=el('span'),tags=el('input');tags.id='sk-metadata-tags';tags.type='text';tagsLabel.append(tagsTitle,tags);const hint=el('p','sk-setting-note'),error=el('p','sk-metadata-error');error.setAttribute('role','alert');
+    title.id='sk-metadata-title';dialog.setAttribute('aria-labelledby',title.id);const actions=el('div','sk-dialog-actions'),cancel=button('sk-metadata-cancel','','x'),save=button('sk-metadata-save','','check','sk-button sk-primary');save.type='submit';actions.append(cancel,save);form.append(title,source,nameLabel,tagsLabel,hint,error,actions);dialog.append(form);root.append(dialog);
+    const menu=$('sk-clip-menu'),metadata=button('sk-menu-metadata','','pencil'),menuFavorite=button('sk-menu-favorite','','star');metadata.setAttribute('role','menuitem');menuFavorite.setAttribute('role','menuitem');menu.append(metadata,menuFavorite);
+    const batchFavorite=button('sk-favorite-selected','','star','sk-icon-button');$('sk-delete-selected').before(batchFavorite);
+    const active=()=>Object.entries(state).some(([,v])=>v!==''&&v!==false);
+    function changed(){const count=Number(state.favorite)+['tag','from','to','min','max'].filter(key=>state[key]!=='').length;filters.dataset.count=String(count);clear.hidden=!active();refresh();}
+    query.addEventListener('input',()=>{state.query=query.value;changed();});favorites.addEventListener('click',()=>{state.favorite=!state.favorite;changed();});
+    clear.addEventListener('click',()=>{Object.assign(state,{query:'',favorite:false,tag:'',from:'',to:'',min:'',max:''});query.value='';for(const {input}of Object.values(fields))input.value='';changed();});
+    filters.addEventListener('click',()=>{if(panel.matches(':popover-open'))panel.hidePopover();else{panel.showPopover();const r=filters.getBoundingClientRect(),box=panel.getBoundingClientRect();panel.style.left=Math.max(10,Math.min(innerWidth-box.width-10,r.right-box.width))+'px';panel.style.top=Math.max(8,Math.min(innerHeight-box.height-10,r.bottom+6))+'px';}});
+    async function patch(ids,value){if(working)return;working=true;render();try{const result=await call('clip-metadata',{ids,patch:value});onClips(result.clips);refresh();return true;}catch(e){notify(e.message);return false;}finally{working=false;render();}}
+    const selected=()=>getSelection();
+    const flipFavorites=()=>{const items=selected();if(items.length)return patch(items.map(c=>c.id),{favorite:!items.every(c=>c.favorite)});};
+    menuFavorite.addEventListener('click',()=>{menu.hidePopover();flipFavorites();});batchFavorite.addEventListener('click',flipFavorites);
+    metadata.addEventListener('click',()=>{const items=selected();if(items.length!==1)return;editing=items[0];menu.hidePopover();name.value=editing.displayName||'';name.placeholder=editing.fileName||editing.name;tags.value=(editing.tags||[]).join(', ');source.textContent=editing.fileName||editing.name;error.textContent='';dialog.showModal();name.focus();});
+    cancel.addEventListener('click',()=>dialog.close());dialog.addEventListener('cancel',event=>{if(working)event.preventDefault();});
+    form.addEventListener('submit',async event=>{event.preventDefault();if(!editing||working)return;save.disabled=cancel.disabled=true;error.textContent='';const ok=await patch([editing.id],{displayName:name.value,tags:tags.value.split(',').map(t=>t.trim()).filter(Boolean)});save.disabled=cancel.disabled=false;if(ok)dialog.close();else error.textContent=t('Değişiklikler Kaydedilemedi.','Changes Could Not Be Saved.');});
+    function render(){
+      query.placeholder=t('Klip, Oyun veya Etiket Ara…','Search Clips, Games or Tags…');query.setAttribute('aria-label',t('Klip Ara','Search Clips'));
+      favorites.lastChild.textContent=t('Favoriler','Favorites');favorites.setAttribute('aria-label',t('Yalnız Favoriler','Favorites Only'));favorites.setAttribute('aria-pressed',String(state.favorite));
+      const count=Number(filters.dataset.count)||0;filters.lastChild.textContent=t('Filtreler','Filters')+(count?' · '+count:'');filters.setAttribute('aria-label',t('Klip Filtreleri','Clip Filters'));clear.title=clear.ariaLabel=t('Filtreleri Temizle','Clear Filters');
+      heading.textContent=t('Klip Filtreleri','Clip Filters');fields.tag.title.textContent=t('Etiket','Tag');fields.from.title.textContent=t('Başlangıç Tarihi','From Date');fields.to.title.textContent=t('Bitiş Tarihi','To Date');fields.min.title.textContent=t('En Az Süre (sn)','Min Duration (s)');fields.max.title.textContent=t('En Fazla Süre (sn)','Max Duration (s)');note.textContent=t('Filtreler Birlikte Uygulanır. Boş Alanlar Sınırsızdır.','Filters Work Together. Empty Fields Have No Limit.');
+      const tagValues=[...new Set(getClips().flatMap(c=>c.tags||[]))].sort((a,b)=>a.localeCompare(b,getLanguage()));if(state.tag&&!tagValues.includes(state.tag))tagValues.push(state.tag);const tagSelect=fields.tag.input;if(JSON.stringify([getLanguage(),...tagValues])!==tagSelect.dataset.options){tagSelect.dataset.options=JSON.stringify([getLanguage(),...tagValues]);tagSelect.replaceChildren();for(const value of ['',...tagValues]){const option=el('option','',value||t('Tüm Etiketler','All Tags'));option.value=value;tagSelect.append(option);}tagSelect.value=state.tag;}
+      title.textContent=t('Klip Bilgileri','Clip Details');nameTitle.textContent=t('Görünen Ad','Display Name');tagsTitle.textContent=t('Etiketler','Tags');hint.textContent=t('Etiketleri Virgülle Ayır. Görünen Adı Değiştirmek Dosyanın Adını veya Konumunu Değiştirmez.','Separate Tags With Commas. Changing The Display Name Keeps The File Name And Location.');cancel.lastChild.textContent=t('Vazgeç','Cancel');save.lastChild.textContent=t('Kaydet','Save');
+      const items=selected(),remove=items.length&&items.every(c=>c.favorite),favoriteText=remove?t('Favorilerden Çıkar','Remove From Favorites'):t('Favorilere Ekle','Add To Favorites');metadata.lastChild.textContent=t('Ad ve Etiketleri Düzenle','Edit Name And Tags');metadata.disabled=working||items.length!==1;menuFavorite.lastChild.textContent=favoriteText;menuFavorite.disabled=working||!items.length;batchFavorite.title=batchFavorite.ariaLabel=favoriteText;batchFavorite.disabled=working||!items.length;
+      const byId=new Map(getClips().map(c=>[c.id,c]));for(const card of root.querySelectorAll('#sk-library-body [data-clip-id]')){const clip=byId.get(card.dataset.clipId);if(!clip)continue;let star=card.querySelector('.sk-clip-favorite');if(!star){star=button('','','star','sk-clip-favorite');star.lastChild.remove();star.addEventListener('click',event=>{event.stopPropagation();const current=getClips().find(c=>c.id===clip.id);if(current)patch([current.id],{favorite:!current.favorite});});star.addEventListener('dblclick',event=>event.stopPropagation());const host=card.querySelector('.sk-row-actions')||card;host.prepend(star);}star.disabled=working;star.setAttribute('aria-pressed',String(clip.favorite===true));star.title=star.ariaLabel=clip.favorite?t('Favorilerden Çıkar','Remove From Favorites'):t('Favorilere Ekle','Add To Favorites');
+        if(card.matches('.sk-card')&&!card.querySelector('.sk-clip-tags')&&clip.tags?.length){const badges=el('span','sk-clip-tags');for(const tag of clip.tags.slice(0,2))badges.append(el('span','',tag));if(clip.tags.length>2)badges.append(el('span','','+'+(clip.tags.length-2)));card.querySelector('.sk-card-open').append(badges);}
+      }
+      const body=$('sk-library-body');if(active()&&body.querySelector('.sk-empty')){const empty=el('div','sk-library-empty'),reset=button('sk-library-empty-reset',t('Filtreleri Temizle','Clear Filters'),'rotate-ccw');empty.append(el('strong','',t('Eşleşen Klip Bulunamadı','No Matching Clips')),el('span','',t('Başka Bir Arama veya Filtre Dene.','Try Another Search Or Filter.')),reset);reset.addEventListener('click',()=>clear.click());body.replaceChildren(empty);}
+      decorate();
+    }
+    render();return {filter:clips=>filterClips(clips,state),render};
+  }
+  const api={filterClips,dateKey,dateLabel,attach};if(typeof module!=='undefined')module.exports=api;scope.EmberLibraryBrowser=api;
+})(typeof window==='undefined'?globalThis:window);
+</script><script>(function(global){
  'use strict';
  const english={
   'Yeni Projeye Aktar':'Import Into New Project','Video Editörü':'Video Editor','Editör EXE Dosyası':'Editor EXE File','Editörü Seç':'Choose Editor','Editör seçilmedi':'No editor selected','Proje Adı':'Project Name','Seçilen Klipler':'Selected Clips','Klipleri Proje Klasörüne Kopyala':'Copy Clips Into Project Folder','Kapalıyken mevcut dosyalar kullanılır. Dosyaları sonradan taşır veya silerseniz projede yeniden bulmanız gerekebilir.':'When off, existing files are used. If you move or delete them later, you may need to locate them again in the project.','Klipler yalnızca medya havuzuna aktarılır. Timeline boş kalır.':'Clips are imported into the media pool only. The timeline stays empty.','Aktar':'Import','Vazgeç':'Cancel','Kapat':'Close','Aynı İsteği Yeniden Gönder':'Resend Same Request','Aktarım Hazırlanıyor…':'Preparing Import…','Editörün sonucu bekleniyor.':'Waiting For Editor Result.','Kopyalama uzun sürebilir. Bu pencereyi kapatmak editördeki işlemi iptal etmez.':'Copying can take time. Closing this window does not cancel the operation in the editor.','Aktarım Tamamlandı':'Import Completed','Aktarım İptal Edildi':'Import Cancelled','Aktarım Hatası':'Import Error','Bu proje adı zaten kullanılıyor. Farklı bir proje adı gir.':'This project name already exists. Enter a different name.','Önce video editörünün EXE dosyasını seç.':'Choose your video editor EXE first.','Son Aktarımı Gör':'View Last Import','Henüz aktarım yok.':'No imports yet.','Yeni aktarım için klipleri kütüphaneden tekrar seç.':'Select the clips in the library again to start a new import.','Proje adı gir.':'Enter a project name.','Aktarmak için bir klip seç.':'Select a clip to import.'
@@ -705,7 +1010,7 @@
   const assets=JSON.parse($('sk-assets').textContent);
   const video=$('sk-video'), player=$('sk-player');
   const defaults={mode:'auto',duration:120,resolution:'1920x1080',fps:'60',customFps:90,qualityMode:'quality',videoBitrate:60,codec:'h264',storage:'disk',stretch:true,holdFrame:true,cursor:true,hotkey:'F8',sound:true,notificationVolume:75,notificationSound:'ember',launch:true,launchMinimized:false,language:'tr',autoBuffer:true,autoAudio:true,folder:'Videolar\\Ember'};
-  let config={...defaults,...initial.settings};let nativeAudio=[],nativeCaptureHealth=null,nativeSaveWarnings=[],playbackFeatures,exportUI,openedClip;
+  let config={...defaults,...initial.settings};let nativeAudio=[],nativeCaptureHealth=null,nativeSaveWarnings=[],playbackFeatures,exportUI,openedClip,displaySettings;
   const i18n=window.KlipI18n?.install(root,config.language||'tr');
   const audioSources=[['mix','Birleşik ses','audio-lines'],['game','Oyun','gamepad-2'],['discord','Discord','headphones'],['browser','Tarayıcı','globe'],['music','Müzik','music-2'],['mic','Mikrofon','mic'],['other','Yeni uygulamaları otomatik ekle','plus']];
   let audio=Object.fromEntries(audioSources.map(s=>[s[0],true]));
@@ -721,6 +1026,7 @@
   clips=clips.map(clip=>({...clip,game:gameFor(clip),fileName:filenameFor(clip)}));
   let view='grid',page='clips',settingsTab='capture',selectedId=clips[0]?.id||'',gameFolder='all';
   const selectedIds=new Set();let deleting=false,activeMediaId=selectedId;
+  let libraryBrowser=null,libraryLanguage=config.language;
   const trashSelectedIds=new Set();let trashEntries=[],trashLoading=false,trashRestoring=false,trashError='';
   let trashPreviewId='',trashPreviewGeneration=0;
   const editorAudio={clipId:'',generation:0,elements:new Map(),urls:new Map(),selections:new Map(),gains:new Map(),masterMuted:false,viewerMuted:false,loading:false,error:'',buffering:false};
@@ -789,8 +1095,9 @@
   }
   function renderConfig(){
     i18n?.setLanguage(config.language||'tr');
+    if(libraryLanguage!==config.language){libraryLanguage=config.language;renderClips();}
     root.querySelectorAll('[data-setting]').forEach(el=>{const value=config[el.dataset.setting];if(el.type==='checkbox')el.checked=value;else el.value=String(value);});
-    renderStartupOption();renderQualityControls();renderStorageHealth();playbackFeatures?.render();exportUI?.render();editorAudio.enhancements?.render();renderNotificationSound();renderReplayRecovery();$('sk-notification-volume-value').textContent=config.notificationVolume+'%';
+    renderStartupOption();renderQualityControls();renderStorageHealth();playbackFeatures?.render();exportUI?.render();editorAudio.enhancements?.render();libraryBrowser?.render();displaySettings?.render();renderNotificationSound();renderReplayRecovery();$('sk-notification-volume-value').textContent=config.notificationVolume+'%';
     root.querySelectorAll('[data-custom-fps]').forEach(el=>el.hidden=config.fps!=='custom');
     const descriptions={screen:'Seçili ekranı kaydeder.',game:'Oyun penceresini izler. Alt+Tab yaptığında masaüstü kayda girmez.',auto:'Oyundayken oyun, masaüstüne geçtiğinde ekran. Her iki kaynak tek klipte birleşir.'};
     $('sk-mode-note').textContent=descriptions[config.mode];
@@ -828,7 +1135,7 @@
   function showExplorer(clip=selected()){if(clip)window.klip.call('explorer',clip.id).catch(e=>notify(e.message));}
   function libraryClips(){
     const visible=gameFolder==='all'?clips:clips.filter(c=>gameFor(c)===gameFolder);
-    return view==='grid'?['today','yesterday'].flatMap(day=>visible.filter(c=>c.day===day)):visible;
+    return libraryBrowser?libraryBrowser.filter(visible):visible;
   }
   function selectClip(clip,additive=false){
     if(deleting)return;
@@ -837,7 +1144,7 @@
     syncLibrarySelection();
   }
   function syncLibrarySelection(){
-    const valid=new Set(clips.map(c=>c.id));for(const id of selectedIds)if(!valid.has(id))selectedIds.delete(id);
+    const valid=new Set(libraryClips().map(c=>c.id));for(const id of selectedIds)if(!valid.has(id))selectedIds.delete(id);
     root.querySelectorAll('[data-clip-id]').forEach(el=>{const on=selectedIds.has(el.dataset.clipId);el.dataset.selected=String(on);const check=el.querySelector('.sk-select-check');if(check){check.setAttribute('aria-checked',String(on));check.disabled=deleting;}});
     const count=selectedIds.size;$('sk-selection-actions').hidden=count===0;$('sk-selection-count').textContent=count+' seçili';
     $('sk-delete-selected').disabled=deleting||!count;$('sk-clear-selection').disabled=deleting;
@@ -845,6 +1152,7 @@
     for(const id of ['sk-menu-watch','sk-menu-edit','sk-menu-details'])$(id).disabled=deleting||count!==1;
     $('sk-menu-explorer').disabled=deleting||!menuClip;$('sk-menu-delete').disabled=deleting||!count;
     $('sk-menu-delete-label').textContent=count>1?'Sil · '+count+' klip':'Sil';
+    libraryBrowser?.render();
   }
   async function deleteSelection(){
     const ids=[...selectedIds].filter(id=>clips.some(c=>c.id===id));if(deleting||!ids.length)return;
@@ -904,14 +1212,15 @@
     $('sk-folder-label').textContent=folderPath(gameFolder);$('sk-folder-label').dataset.tooltip=folderPath(gameFolder);renderFolders();
     $('sk-view-grid').setAttribute('aria-pressed',String(view==='grid'));$('sk-view-list').setAttribute('aria-pressed',String(view==='list'));
     if(view==='grid'){
-      for(const day of ['today','yesterday']){
-        const group=visibleClips.filter(c=>c.day===day);if(!group.length)continue;
-        const section=make('section','sk-group'),grid=make('div','sk-grid');section.append(make('h2','',day==='today'?'Bugün':'Dün'),grid);
+      const dayKey=clip=>window.EmberLibraryBrowser?.dateKey(clip)||clip.day;
+      for(const day of [...new Set(visibleClips.map(dayKey))]){
+        const group=visibleClips.filter(c=>dayKey(c)===day);if(!group.length)continue;
+        const section=make('section','sk-group'),grid=make('div','sk-grid'),heading=make('h2','',window.EmberLibraryBrowser?.dateLabel(group[0],config.language)||(day==='today'?'Bugün':'Dün'));heading.dataset.i18n='off';section.append(heading,grid);
         for(const clip of group){
           const card=make('article','sk-card');
           const button=make('button','sk-card-open cursor-interaction');button.type='button';button.setAttribute('aria-label',clip.name+' klibini aç');button.dataset.tooltip=clip.name;
           const thumb=make('span','sk-thumb'),image=make('img');image.src=clip.thumbnail||'';image.alt='';image.draggable=false;thumb.append(image,make('span','sk-duration',time(clip.seconds)));
-          button.append(thumb,make('span','sk-card-name',clip.name),make('span','sk-card-date',(day==='today'?'Bugün ':'Dün ')+clip.clock));
+          const date=make('span','sk-card-date',(window.EmberLibraryBrowser?.dateLabel(clip,config.language)||(day==='today'?'Bugün':'Dün'))+' '+clip.clock);date.dataset.i18n='off';button.append(thumb,make('span','sk-card-name',clip.name),date);
           bindClipSelection(card,button,clip);card.append(button,selectionCheckbox(clip),menuButton(clip));grid.append(card);
         }body.append(section);
       }
@@ -923,7 +1232,7 @@
         const row=make('tr');
         const first=make('td'),open=make('button','sk-row-open cursor-interaction');open.type='button';open.setAttribute('aria-label',clip.name+' klibini aç');open.dataset.tooltip=clip.name;
         const image=make('img');image.src=clip.thumbnail||'';image.alt='';const thumb=make('span','sk-row-thumb');thumb.append(image,make('span','sk-duration',time(clip.seconds)));open.append(thumb,make('span','sk-row-name',clip.name));bindClipSelection(row,open,clip);const leading=make('div','sk-row-leading');leading.append(selectionCheckbox(clip,true),open);first.append(leading);row.append(first);
-        row.append(make('td','sk-muted',(clip.day==='today'?'Bugün ':'Dün ')+clip.clock),make('td','',time(clip.seconds)),make('td','sk-muted',clip.resolution.split('x')[1]+'p · '+fpsLabel(clip)),make('td','sk-muted',clip.tracks+' ses izi'));
+        const date=make('td','sk-muted',(window.EmberLibraryBrowser?.dateLabel(clip,config.language)||(clip.day==='today'?'Bugün':'Dün'))+' '+clip.clock);date.dataset.i18n='off';row.append(date,make('td','',time(clip.seconds)),make('td','sk-muted',clip.resolution.split('x')[1]+'p · '+fpsLabel(clip)),make('td','sk-muted',clip.tracks+' ses izi'));
         const last=make('td'),actions=make('div','sk-row-actions'),edit=make('button','sk-icon-button cursor-interaction');edit.type='button';edit.setAttribute('aria-label',clip.name+' klibini düzenle');edit.dataset.tooltip='Düzenle';edit.append(icon('scissors'));edit.addEventListener('click',()=>openClip(clip,'editor'));
         const more=menuButton(clip);more.className='sk-icon-button cursor-interaction';actions.append(edit,more);last.append(actions);row.append(last);tbody.append(row);
       }table.append(tbody);wrap.append(table);body.append(wrap);
@@ -1319,6 +1628,8 @@
   video.volume=.7;video.removeAttribute('poster');video.src=assets.video;$('sk-viewer-title').textContent=selected()?.name||'Klip izleme';$('sk-editor-name').textContent=selected()?.name||'Klip izleme';
   setSettingsTab('capture',false);renderConfig();renderClips();renderAudio();renderPlayer();renderUpdateUI();showPage('clips',false);
   
+  displaySettings=window.EmberDisplaySettings.attach({root,getConfig:()=>config,call:(...args)=>window.klip.call(...args),setPreference:async(key,value)=>{const accepted=await window.klip.call('settings',{...config,[key]:value});config=accepted;lastGood={...config};lastNativeSettings=JSON.stringify(config);renderConfig();},notify});
+  libraryBrowser=window.EmberLibraryBrowser.attach({root,call:(...args)=>window.klip.call(...args),getClips:()=>clips,getSelection:()=>clips.filter(clip=>selectedIds.has(clip.id)),getLanguage:()=>config.language,onClips:list=>{clips=list;const current=clips.find(c=>c.id===selectedId);if(current){$('sk-viewer-title').textContent=current.name;$('sk-editor-name').textContent=current.name;if(openedClip?.id===current.id)Object.assign(openedClip,{name:current.name,displayName:current.displayName,tags:current.tags,favorite:current.favorite});}},refresh:()=>renderClips(),notify,decorate});
   playbackFeatures=window.EmberPlaybackFeatures.attach({root,getConfig:()=>config,setPreference:async(key,value)=>{config[key]=value;await persist();renderConfig();},openSettings:()=>{setSettingsTab('capture',false);showPage('settings');},notify});playbackFeatures.receive(initial.recordingHealth);
   exportUI=window.EmberExportUI.attach({root,call:(...args)=>window.klip.call(...args),getLanguage:()=>config.language});
   editorAudio.enhancements=window.EmberEditorAudioEnhancements.attach({root,call:(...args)=>window.klip.call(...args),getClip:()=>page==='editor'?selected():null,getMix:clip=>({tracks:selectedEditorAudioIndexes(clip),volumes:selectedEditorAudioVolumes(clip)}),applyMix:(clip,mix)=>applyEditorAudioMix(clip,mix),getLanguage:()=>config.language});
@@ -1332,7 +1643,7 @@
     const recovering=recoveringReplays||replayRecovery.recovering===true;$('sk-save').disabled=saving||recovering;$('sk-save').setAttribute('aria-busy',String(saving||recovering));$('sk-save-label').textContent=saving?'Kaydediliyor…':recovering?'Kurtarılıyor…':'Tamponu kurtar';
   }
   const chrome=root.querySelector('.sk-chrome');chrome.removeAttribute('aria-hidden');chrome.replaceChildren();for(const [action,glyph,label]of [['minimize','minus','Küçült'],['maximize','square','Büyüt'],['close','x','Pencereyi kapat']]){const b=make('button','sk-icon-button');b.setAttribute('aria-label',label);b.append(icon(glyph));b.addEventListener('click',()=>window.klip.call('window',action));chrome.append(b);}decorate();
-  window.klip.onState(s=>{if(s.recordingHealth)playbackFeatures.receive(s.recordingHealth);if(s.projectTransfers)projectTransferUI.receive(s.projectTransfers);if(s.saveRequested)nativeSaveWarnings=[];if(Array.isArray(s.warnings))nativeSaveWarnings=s.warnings;if(s.captureHealth){nativeCaptureHealth=s.captureHealth;renderStorageHealth();}if(typeof s.saving==='boolean')saving=s.saving;if(typeof s.running==='boolean')running=s.running;if(typeof s.buffered==='number')buffered=s.buffered;if(s.clips){clips=s.clips;for(const c of clips)if(!games.includes(c.game))games.push(c.game);renderClips();}if(s.audio){nativeAudio=s.audio;renderAudio();}if(s.recovery)receiveRecoveryState(s.recovery);if(s.update)receiveUpdateState(s.update);if(s.message)notify(s.message);if(s.saveRequested&&config.sound)chime();renderBuffer();});
+  window.klip.onState(s=>{displaySettings.receive(s);if(s.recordingHealth)playbackFeatures.receive(s.recordingHealth);if(s.projectTransfers)projectTransferUI.receive(s.projectTransfers);if(s.saveRequested)nativeSaveWarnings=[];if(Array.isArray(s.warnings))nativeSaveWarnings=s.warnings;if(s.captureHealth){nativeCaptureHealth=s.captureHealth;renderStorageHealth();}if(typeof s.saving==='boolean')saving=s.saving;if(typeof s.running==='boolean')running=s.running;if(typeof s.buffered==='number')buffered=s.buffered;if(s.clips){clips=s.clips;for(const c of clips)if(!games.includes(c.game))games.push(c.game);renderClips();}if(s.audio){nativeAudio=s.audio;renderAudio();}if(s.recovery)receiveRecoveryState(s.recovery);if(s.update)receiveUpdateState(s.update);if(s.message)notify(s.message);if(s.saveRequested&&config.sound)chime();renderBuffer();});
   window.klip.call('update-state').then(state=>receiveUpdateState(state)).catch(()=>{});
   if(initial.recovery)receiveRecoveryState(initial.recovery);window.klip.call('recovery-state').then(receiveRecoveryState).catch(()=>{});
   document.documentElement.dataset.nativeReady='true';

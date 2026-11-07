@@ -493,6 +493,7 @@
   clips=clips.map(clip=>({...clip,game:gameFor(clip),fileName:filenameFor(clip)}));
   let view='grid',page='clips',settingsTab='capture',selectedId=clips[2].id,gameFolder='all';
   const selectedIds=new Set();let deleting=false,activeMediaId=selectedId;
+  let libraryBrowser=null,libraryLanguage=config.language;
   const trashSelectedIds=new Set();let trashEntries=[],trashLoading=false,trashRestoring=false,trashError='';
   let trashPreviewId='',trashPreviewGeneration=0;
   const editorAudio={clipId:'',generation:0,elements:new Map(),urls:new Map(),selections:new Map(),gains:new Map(),masterMuted:false,viewerMuted:false,loading:false,error:'',buffering:false};
@@ -562,6 +563,7 @@
   }
   function renderConfig(){
     i18n?.setLanguage(config.language||'tr');
+    if(libraryLanguage!==config.language){libraryLanguage=config.language;renderClips();}
     root.querySelectorAll('[data-setting]').forEach(el=>{const value=config[el.dataset.setting];if(el.type==='checkbox')el.checked=value;else el.value=String(value);});
     renderStartupOption();renderQualityControls();renderNotificationSound();renderReplayRecovery();$('sk-notification-volume-value').textContent=config.notificationVolume+'%';
     root.querySelectorAll('[data-custom-fps]').forEach(el=>el.hidden=config.fps!=='custom');
@@ -615,7 +617,7 @@
   }
   function libraryClips(){
     const visible=gameFolder==='all'?clips:clips.filter(c=>gameFor(c)===gameFolder);
-    return view==='grid'?['today','yesterday'].flatMap(day=>visible.filter(c=>c.day===day)):visible;
+    return libraryBrowser?libraryBrowser.filter(visible):visible;
   }
   function selectClip(clip,additive=false){
     if(deleting)return;
@@ -624,7 +626,7 @@
     syncLibrarySelection();
   }
   function syncLibrarySelection(){
-    const valid=new Set(clips.map(c=>c.id));for(const id of selectedIds)if(!valid.has(id))selectedIds.delete(id);
+    const valid=new Set(libraryClips().map(c=>c.id));for(const id of selectedIds)if(!valid.has(id))selectedIds.delete(id);
     root.querySelectorAll('[data-clip-id]').forEach(el=>{const on=selectedIds.has(el.dataset.clipId);el.dataset.selected=String(on);const check=el.querySelector('.sk-select-check');if(check){check.setAttribute('aria-checked',String(on));check.disabled=deleting;}});
     const count=selectedIds.size;$('sk-selection-actions').hidden=count===0;$('sk-selection-count').textContent=count+' seçili';
     $('sk-delete-selected').disabled=deleting||!count;$('sk-clear-selection').disabled=deleting;
@@ -632,6 +634,7 @@
     for(const id of ['sk-menu-watch','sk-menu-edit','sk-menu-details'])$(id).disabled=deleting||count!==1;
     $('sk-menu-explorer').disabled=deleting||!menuClip;$('sk-menu-delete').disabled=deleting||!count;
     $('sk-menu-delete-label').textContent=count>1?'Sil · '+count+' klip':'Sil';
+    libraryBrowser?.render();
   }
   async function deleteSelection(){
     const ids=[...selectedIds].filter(id=>clips.some(c=>c.id===id));if(deleting||!ids.length)return;
@@ -691,14 +694,15 @@
     $('sk-folder-label').textContent=folderPath(gameFolder);$('sk-folder-label').dataset.tooltip=folderPath(gameFolder);renderFolders();
     $('sk-view-grid').setAttribute('aria-pressed',String(view==='grid'));$('sk-view-list').setAttribute('aria-pressed',String(view==='list'));
     if(view==='grid'){
-      for(const day of ['today','yesterday']){
-        const group=visibleClips.filter(c=>c.day===day);if(!group.length)continue;
-        const section=make('section','sk-group'),grid=make('div','sk-grid');section.append(make('h2','',day==='today'?'Bugün':'Dün'),grid);
+      const dayKey=clip=>window.EmberLibraryBrowser?.dateKey(clip)||clip.day;
+      for(const day of [...new Set(visibleClips.map(dayKey))]){
+        const group=visibleClips.filter(c=>dayKey(c)===day);if(!group.length)continue;
+        const section=make('section','sk-group'),grid=make('div','sk-grid'),heading=make('h2','',window.EmberLibraryBrowser?.dateLabel(group[0],config.language)||(day==='today'?'Bugün':'Dün'));heading.dataset.i18n='off';section.append(heading,grid);
         for(const clip of group){
           const card=make('article','sk-card');
           const button=make('button','sk-card-open cursor-interaction');button.type='button';button.setAttribute('aria-label',clip.name+' klibini aç');button.dataset.tooltip=clip.name;
           const thumb=make('span','sk-thumb'),image=make('img');image.src=assets.thumbs[clip.thumb%assets.thumbs.length];image.alt='';image.draggable=false;thumb.append(image,make('span','sk-duration',time(clip.seconds)));
-          button.append(thumb,make('span','sk-card-name',clip.name),make('span','sk-card-date',(day==='today'?'Bugün ':'Dün ')+clip.clock));
+          const date=make('span','sk-card-date',(window.EmberLibraryBrowser?.dateLabel(clip,config.language)||(day==='today'?'Bugün':'Dün'))+' '+clip.clock);date.dataset.i18n='off';button.append(thumb,make('span','sk-card-name',clip.name),date);
           bindClipSelection(card,button,clip);card.append(button,selectionCheckbox(clip),menuButton(clip));grid.append(card);
         }body.append(section);
       }
@@ -710,7 +714,7 @@
         const row=make('tr');
         const first=make('td'),open=make('button','sk-row-open cursor-interaction');open.type='button';open.setAttribute('aria-label',clip.name+' klibini aç');open.dataset.tooltip=clip.name;
         const image=make('img');image.src=assets.thumbs[clip.thumb%assets.thumbs.length];image.alt='';const thumb=make('span','sk-row-thumb');thumb.append(image,make('span','sk-duration',time(clip.seconds)));open.append(thumb,make('span','sk-row-name',clip.name));bindClipSelection(row,open,clip);const leading=make('div','sk-row-leading');leading.append(selectionCheckbox(clip,true),open);first.append(leading);row.append(first);
-        row.append(make('td','sk-muted',(clip.day==='today'?'Bugün ':'Dün ')+clip.clock),make('td','',time(clip.seconds)),make('td','sk-muted',clip.resolution.split('x')[1]+'p · '+fpsLabel(clip)),make('td','sk-muted',clip.tracks+' ses izi'));
+        const date=make('td','sk-muted',(window.EmberLibraryBrowser?.dateLabel(clip,config.language)||(clip.day==='today'?'Bugün':'Dün'))+' '+clip.clock);date.dataset.i18n='off';row.append(date,make('td','',time(clip.seconds)),make('td','sk-muted',clip.resolution.split('x')[1]+'p · '+fpsLabel(clip)),make('td','sk-muted',clip.tracks+' ses izi'));
         const last=make('td'),actions=make('div','sk-row-actions'),edit=make('button','sk-icon-button cursor-interaction');edit.type='button';edit.setAttribute('aria-label',clip.name+' klibini düzenle');edit.dataset.tooltip='Düzenle';edit.append(icon('scissors'));edit.addEventListener('click',()=>openClip(clip,'editor'));
         const more=menuButton(clip);more.className='sk-icon-button cursor-interaction';actions.append(edit,more);last.append(actions);row.append(last);tbody.append(row);
       }table.append(tbody);wrap.append(table);body.append(wrap);

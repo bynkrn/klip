@@ -5,13 +5,16 @@ function control(){return {dataset:{},attributes:{},listeners:{},children:[],sty
 function harness(extra={}){
   const elements=new Map(),element=id=>{if(!elements.has(id))elements.set(id,{hidden:false,disabled:false,textContent:'',style:{},setAttribute(){},hidePopover(){},showPopover(){},matches(){return false;},getBoundingClientRect:()=>({width:282,height:220}),querySelector:()=>({focus(){}})});return elements.get(id);};
   const context={clips:[{id:'a',day:'today',game:'A'},{id:'b',day:'today',game:'A'},{id:'c',day:'yesterday',game:'A'},{id:'d',day:'yesterday',game:'B'}],view:'grid',gameFolder:'all',selectedIds:new Set(),selectionAnchor:'',deleting:false,activeMediaId:'',selectedId:'',page:'clips',waitingKey:false,menuClip:null,innerWidth:1024,innerHeight:600,window:{},editorAudio:{clipId:''},editorTimeline:{clipId:''},renderPlayer(){},gameFor:c=>c.game,$:element,make:()=>control(),icon:()=>({}),root:{querySelectorAll:()=>[],querySelector:()=>null},notify:message=>context.message=message,persist(){},renderClips(){context.rendered=true;},video:{pause(){context.paused=true;},removeAttribute(){context.released=true;},load(){}},showPage:p=>context.page=p,openClip:(clip,destination)=>{context.opened=clip.id;context.destination=destination;},...extra};
-  vm.createContext(context);for(const name of ['libraryClips','selectClip','syncLibrarySelection','deleteSelection','openMenu','handleLibraryKey'])vm.runInContext(production(name),context);return context;
+  context.libraryBrowser=null;vm.createContext(context);for(const name of ['libraryClips','selectClip','syncLibrarySelection','deleteSelection','openMenu','handleLibraryKey'])vm.runInContext(production(name),context);return context;
 }
 test('single context selection replaces a group while checkbox selection toggles additively',()=>{
   const h=harness();h.selectClip(h.clips[0]);assert.deepEqual([...h.selectedIds],['a']);h.selectClip(h.clips[2],true);assert.deepEqual([...h.selectedIds],['a','c']);h.selectClip(h.clips[1]);assert.deepEqual([...h.selectedIds],['b']);assert.equal(h.selectedId,'');h.selectClip(h.clips[1],true);assert.deepEqual([...h.selectedIds],[]);
 });
 test('selection cannot include clips outside the active folder',()=>{
   const h=harness({gameFolder:'A'});h.selectClip(h.clips[0],true);h.selectClip(h.clips[3],true);assert.deepEqual([...h.selectedIds],['a']);
+});
+test('filtering a selected clip out clears its hidden selection before batch actions',()=>{
+  const h=harness({selectedIds:new Set(['a','b'])});h.libraryBrowser={filter:items=>items.filter(c=>c.id==='b'),render(){}};h.syncLibrarySelection();assert.deepEqual([...h.selectedIds],['b']);
 });
 test('partial native trash result retains failed selection and releases deleted media',async()=>{
   const h=harness({selectedIds:new Set(['a','b']),activeMediaId:'a',selectedId:'a',page:'viewer'});h.window.klip={call:async(action,payload)=>{assert.equal(action,'delete');assert.deepEqual(Array.from(payload.ids),['a','b']);return {clips:h.clips.filter(c=>c.id!=='a'),deleted:['a'],failed:[{id:'b',error:'busy'}]};}};await h.deleteSelection();assert.deepEqual([...h.selectedIds],['b']);assert.equal(h.clips.some(c=>c.id==='a'),false);assert.equal(h.paused,true);assert.equal(h.released,true);assert.equal(h.page,'clips');assert.equal(h.deleting,false);assert.match(h.message,/1.*silinemedi/);

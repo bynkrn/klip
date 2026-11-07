@@ -8,6 +8,16 @@ class VideoSources {
   this.health=new Map();this.gameResets=0;this.windowAttempts=0;this.windowRetryAt=0;this.resumeUntil=0;
  }
  enqueue(fn){const result=this.serial.then(()=>this.stopped?undefined:fn());this.serial=result.catch(()=>{});return result;}
+ setDisplay(display){return this.enqueue(async()=>{
+  if(!display?.id)throw new Error('Kaydedilecek ekran bulunamadı.');
+  const geometryKey=JSON.stringify([display.id,display.width,display.height,this.config.resolution,this.config.stretch]);
+  if(this.displayMonitorId!==display.id){
+   // Overlay only the identity; native startup may already have selected WGC.
+   await this.obs.call('SetInputSettings',{inputName:'Klip Ekran',inputSettings:{monitor_id:display.id,capture_cursor:this.config.cursor},overlay:true});
+   this.displayMonitorId=display.id;
+  }
+  if(this.displayGeometryKey!==geometryKey){await this.geometry(this.displayId);this.displayGeometryKey=geometryKey;}
+ });}
  get wanted(){return this.config.mode==='game'||this.config.mode==='auto'&&this.focus;}
  async setEnabled(id,enabled){if(this.stopped&&enabled)return;if(id==null||this.enabled.get(id)===enabled)return;await this.obs.call('SetSceneItemEnabled',{sceneName:'Klip',sceneItemId:id,sceneItemEnabled:enabled});this.enabled.set(id,enabled);}
  async geometry(id){const [width,height]=this.config.resolution.split('x').map(Number);await this.obs.call('SetSceneItemTransform',{sceneName:'Klip',sceneItemId:id,sceneItemTransform:{positionX:0,positionY:0,rotation:0,scaleX:1,scaleY:1,cropLeft:0,cropTop:0,cropRight:0,cropBottom:0,boundsType:this.config.stretch?'OBS_BOUNDS_STRETCH':'OBS_BOUNDS_SCALE_INNER',boundsWidth:width,boundsHeight:height,boundsAlignment:5}});}

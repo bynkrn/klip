@@ -2,12 +2,41 @@ const {OBS}=require('./obs');
 const fs=require('node:fs/promises'),path=require('node:path'),crypto=require('node:crypto'),{spawn}=require('node:child_process');
 const {EventEmitter}=require('node:events');
 const {VideoSources}=require('./video-sources');
+const {normalizeDisplays,reconcileDisplays,selectDisplay,enumerateDisplays}=require('./display-selection');
 const {resolveAudioSync,inputSyncOffset}=require('./audio-sync');
 const gameProcess=(exe,target)=>target?exe.toLowerCase()===target.toLowerCase():/^(VALORANT.*|cs2|quakelive.*|ddnet.*|r5apex|FortniteClient.*|Overwatch|dota2|RocketLeague|RainbowSix.*)\.exe$/i.test(exe);
 const gameName=exe=>/VALORANT/i.test(exe)?'Valorant':/^cs2/i.test(exe)?'Counter-Strike 2':/quakelive/i.test(exe)?'Quake Live':exe.replace(/\.exe$/i,'');
 class Capture extends EventEmitter{
- constructor(root,options={}){super();this.audioSyncProfile=options.audioSyncProfile||null;this.syncOffsets=resolveAudioSync(null,null);this.obs=new OBS(root);this.root=root;this.inputs=new Set();this.inputSettings=new Map();this.audio=[];this.audioSources=new Map();this.audioApps=new Map();this.audioFailures=new Map();this.audioWarningKeys=new Set();this.replaySnapshots=new Map();this.pendingAudioClaims=new Map();this.recoveryConfirmations=new Map();this.recoveryManifests=[];this.recoveryRequired=null;this.owner=this;this.dynamicAudio=false;this.audioEpoch=0;this.lastGame='Masaüstü';this.focus=null;this.running=false;this.obs.on('ReplayBufferRecoveryRequired',d=>{this.recoveryRequired=d.keepAlive?d:null;this.emit('recovery-required',d);this.emit('save-failed',new Error(d.message||'Tampon kurtarma bekliyor.'));this.refreshRecoveries().catch(()=>{});});this.obs.on('AudioSessionsChanged',()=>{if(this.running)this.refreshAudio().catch(e=>this.emit('warning',e.message));});this.obs.on('ReplayBufferSaved',d=>{this.lastSnapshot=d;this.replaySnapshots.set(d.savedReplayPath,d);while(this.replaySnapshots.size>16)this.replaySnapshots.delete(this.replaySnapshots.keys().next().value);if(d.automatic){this.automaticPreservation=this.listenerCount('automatic-replay')?new Promise((complete,fail)=>this.emit('automatic-replay',{detail:d,complete,fail})):Promise.resolve();this.automaticPreservation.catch(error=>this.emit('warning','Tampon geçmişi ham dosyada korundu: '+error.message));}else{if(this.dynamicAudio&&this.listenerCount('saved')){let resolve;const promise=new Promise(done=>resolve=done);this.pendingAudioClaims.set(d.savedReplayPath,{promise,resolve});}this.emit('saved',d.savedReplayPath);}});this.obs.on('AudioReplayWarning',d=>this.emit('warning',d.message||String(d)));this.obs.on('ReplayBufferSaveFailed',d=>this.emit('save-failed',new Error(d.message||'Klip kaydedilemedi.')));this.obs.on('engine-error',e=>this.emit('warning',e));this.obs.on('engine-stopped',()=>{this.audioEpoch++;const wasRunning=this.running;this.running=false;clearInterval(this.audioTimer);clearInterval(this.videoTimer);clearInterval(this.syncTimer);clearInterval(this.healthTimer);this.watcher?.kill();const video=this.video;this.video=null;Promise.allSettled([Promise.resolve(video?.stop()),this.automaticPreservation||Promise.resolve(),...Array.from(this.pendingAudioClaims.values(),claim=>claim.promise)]).then(()=>this.obs.close().catch(()=>{}));this.inputs.clear();this.inputSettings.clear();if(wasRunning)this.emit('warning','Kayıt motoru kapandı. Tampon durdu; yeniden başlatabilirsin.');});}
+ constructor(root,options={}){super();this.enumerateDisplays=options.enumerateDisplays||enumerateDisplays;this.audioSyncProfile=options.audioSyncProfile||null;this.syncOffsets=resolveAudioSync(null,null);this.obs=new OBS(root);this.root=root;this.inputs=new Set();this.inputSettings=new Map();this.audio=[];this.audioSources=new Map();this.audioApps=new Map();this.audioFailures=new Map();this.audioWarningKeys=new Set();this.replaySnapshots=new Map();this.pendingAudioClaims=new Map();this.recoveryConfirmations=new Map();this.recoveryManifests=[];this.recoveryRequired=null;this.owner=this;this.dynamicAudio=false;this.audioEpoch=0;this.lastGame='Masaüstü';this.focus=null;this.running=false;this.obs.on('ReplayBufferRecoveryRequired',d=>{this.recoveryRequired=d.keepAlive?d:null;this.emit('recovery-required',d);this.emit('save-failed',new Error(d.message||'Tampon kurtarma bekliyor.'));this.refreshRecoveries().catch(()=>{});});this.obs.on('AudioSessionsChanged',()=>{if(this.running)this.refreshAudio().catch(e=>this.emit('warning',e.message));});this.obs.on('ReplayBufferSaved',d=>{this.lastSnapshot=d;this.replaySnapshots.set(d.savedReplayPath,d);while(this.replaySnapshots.size>16)this.replaySnapshots.delete(this.replaySnapshots.keys().next().value);if(d.automatic){this.automaticPreservation=this.listenerCount('automatic-replay')?new Promise((complete,fail)=>this.emit('automatic-replay',{detail:d,complete,fail})):Promise.resolve();this.automaticPreservation.catch(error=>this.emit('warning','Tampon geçmişi ham dosyada korundu: '+error.message));}else{if(this.dynamicAudio&&this.listenerCount('saved')){let resolve;const promise=new Promise(done=>resolve=done);this.pendingAudioClaims.set(d.savedReplayPath,{promise,resolve});}this.emit('saved',d.savedReplayPath);}});this.obs.on('AudioReplayWarning',d=>this.emit('warning',d.message||String(d)));this.obs.on('ReplayBufferSaveFailed',d=>this.emit('save-failed',new Error(d.message||'Klip kaydedilemedi.')));this.obs.on('engine-error',e=>this.emit('warning',e));this.obs.on('engine-stopped',()=>{this.audioEpoch++;const wasRunning=this.running;this.running=false;clearInterval(this.audioTimer);clearInterval(this.videoTimer);clearInterval(this.syncTimer);clearInterval(this.healthTimer);this.watcher?.kill();const video=this.video;this.video=null;Promise.allSettled([Promise.resolve(video?.stop()),this.automaticPreservation||Promise.resolve(),...Array.from(this.pendingAudioClaims.values(),claim=>claim.promise)]).then(()=>this.obs.close().catch(()=>{}));this.inputs.clear();this.inputSettings.clear();if(wasRunning)this.emit('warning','Kayıt motoru kapandı. Tampon durdu; yeniden başlatabilirsin.');});}
  async configure(c,bufferDir){await fs.mkdir(bufferDir,{recursive:true});}
+ get displays(){return this._displays||[];}
+ get displaySelection(){return this._displaySelection||selectDisplay(this.config,this.displays,this.gameMonitorId);}
+ publishDisplaySelection(selection){
+  if(JSON.stringify(selection)===JSON.stringify(this._displaySelection))return;
+  this._displaySelection=selection;this.emit('display-selection',selection);
+ }
+ async listDisplays(){
+  const work=(this.displayQueue||Promise.resolve()).catch(()=>{}).then(async()=>{
+   let displays;
+   try{
+    displays=normalizeDisplays(await this.enumerateDisplays());
+    if(this.video){const {propertyItems}=await this.obs.call('GetInputPropertiesListPropertyItems',{inputName:'Klip Ekran',propertyName:'monitor_id'});displays=reconcileDisplays(displays,propertyItems);}
+   }catch(error){this.publishDisplaySelection({...this.displaySelection,fallback:true,reason:'enumeration-failed',error:error.message});throw error;}
+   await this.acceptDisplays(displays);return this.displays;
+  });this.displayQueue=work;return work;
+ }
+ async acceptDisplays(displays){
+  const next=normalizeDisplays(displays);
+  if(JSON.stringify(next)!==JSON.stringify(this.displays)){this._displays=next;this.emit('displays',next);}
+  await this.applyDisplaySelection();
+ }
+ async applyDisplaySelection(){
+  const selected=selectDisplay(this.config,this.displays,this.gameMonitorId);
+  if(!selected.activeMonitorId){this.publishDisplaySelection(selected);throw new Error('Kaydedilecek etkin ekran bulunamadı.');}
+  try{if(this.video)await this.video.setDisplay(this.displays.find(display=>display.id===selected.activeMonitorId));}
+  catch(error){this.publishDisplaySelection({...selected,activeMonitorId:this.video?.displayMonitorId||this.displaySelection.activeMonitorId,fallback:true,reason:'monitor-switch-failed',error:error.message});throw error;}
+  this.publishDisplaySelection(selected);
+ }
  async refreshSyncProfile(){
   if(!this.audioSyncProfile)return true;if(this.syncChangePending)return false;
   const endpoint=await this.obs.call('GetDefaultAudioEndpointInfo');
@@ -24,7 +53,7 @@ class Capture extends EventEmitter{
  async start(c,bufferDir){
   if(this.recoveryRequired?.keepAlive)throw new Error('Önce bekleyen tamponu kurtar.');if(this.running)return;
   if(this.obs.socket?.readyState===1)await this.obs.close();
-  this.audioEpoch++;this.health=null;this.healthObservedAt=0;this.lastSnapshot=null;this.replaySnapshots.clear();this.recoveryConfirmations.clear();this.recoveryRequired=null;this.pendingAudioClaims.clear();this.automaticPreservation=null;this.focus=null;this.syncEndpointAtStart=null;this.syncChangePending=false;this.syncOffsets=resolveAudioSync(null,null);this.lastWindow=null;this.lastGame='Masaüstü';this.activeGameExe=c.targetExe||null;
+  this.audioEpoch++;this.health=null;this.healthObservedAt=0;this.lastSnapshot=null;this.replaySnapshots.clear();this.recoveryConfirmations.clear();this.recoveryRequired=null;this.pendingAudioClaims.clear();this.automaticPreservation=null;this.focus=null;this.syncEndpointAtStart=null;this.syncChangePending=false;this.syncOffsets=resolveAudioSync(null,null);this.lastWindow=null;this.lastGame='Masaüstü';this.activeGameExe=c.targetExe||null;this.gameMonitorId='';
   this.bufferDir=path.resolve(bufferDir);this.audioSnapshotRoot=path.join(this.bufferDir,'audio-snapshots');this.audioSignature=null;this.audioSources.clear();this.audioApps.clear();this.audioFailures.clear();await this.configure(c,bufferDir);await this.obs.launch(c,bufferDir);this.config=c;
   const o=this.obs;let scenes;for(let attempt=0;attempt<80;attempt++){try{scenes=await o.call('GetSceneList');break;}catch(e){if(attempt===79)throw e;await new Promise(r=>setTimeout(r,250));}}if(!scenes.scenes.some(s=>s.sceneName==='Klip'))await o.call('CreateScene',{sceneName:'Klip'});
   await o.call('SetCurrentProgramScene',{sceneName:'Klip'});
@@ -33,21 +62,18 @@ class Capture extends EventEmitter{
   await o.call('SetStudioModeEnabled',{studioModeEnabled:false});
   await o.call('SetVideoSettings',{baseWidth:Number(c.resolution.split('x')[0]),baseHeight:Number(c.resolution.split('x')[1]),outputWidth:Number(c.resolution.split('x')[0]),outputHeight:Number(c.resolution.split('x')[1]),fpsNumerator:c.fps==='custom'?Number(c.customFps):Number(c.fps),fpsDenominator:1});
   const kinds=(await o.call('GetInputKindList')).inputKinds;this.dynamicAudio=kinds.includes('ember_process_audio_capture');this.emit('diagnostic',{kinds,dynamicAudio:this.dynamicAudio});await this.refreshRecoveries();
-  await this.ensureInput('Klip Ekran','monitor_capture',{monitor:0,capture_cursor:c.cursor,method:0},c.mode!=='game');
-  const monitors=await o.call('GetInputPropertiesListPropertyItems',{inputName:'Klip Ekran',propertyName:'monitor_id'});
-  const monitor=monitors.propertyItems.find(m=>/0,\s*0|primary|birincil/i.test(m.itemName))||monitors.propertyItems[0];
-  if(!monitor)throw new Error('Kaydedilecek ekran bulunamadı.');
-  await o.call('SetInputSettings',{inputName:'Klip Ekran',inputSettings:{monitor_id:monitor.itemValue,capture_cursor:c.cursor,method:0},overlay:true});
+  await this.ensureInput('Klip Ekran','monitor_capture',{monitor_id:'DUMMY',capture_cursor:c.cursor,method:0},c.mode!=='game');
   await this.ensureInput('Klip Oyun','game_capture',{capture_mode:'any_fullscreen',capture_cursor:c.cursor,allow_transparency:false,limit_framerate:true,capture_audio:false},false);
   const items=(await o.call('GetSceneItemList',{sceneName:'Klip'})).sceneItems;this.displayId=items.find(i=>i.sourceName==='Klip Ekran').sceneItemId;this.gameId=items.find(i=>i.sourceName==='Klip Oyun').sceneItemId;
   this.video=new VideoSources(o,{config:c,ensureInput:this.ensureInput.bind(this),onChange:source=>this.emit('capture-source',source),onWarning:message=>this.emit('warning',message)});
   await this.video.initialize({displayId:this.displayId,gameId:this.gameId,windowId:items.find(i=>i.sourceName==='Klip Pencere')?.sceneItemId});
+  await this.listDisplays();
   if(c.mode!=='screen'){const windows=await o.call('GetInputPropertiesListPropertyItems',{inputName:'Klip Oyun',propertyName:'window'});const target=windows.propertyItems.find(i=>gameProcess(String(i.itemValue).split(':').at(-1),c.targetExe));if(target){const exe=String(target.itemValue).split(':').at(-1);await this.video.setTarget(target.itemValue);this.lastGame=gameName(exe);this.activeGameExe=exe;}else if(c.targetExe&&c.mode==='game')throw new Error('Hedef oyun penceresi bulunamadı. Oyunu açıp dosya adını kontrol et.');}
   await this.updateVisibility(false);
   this.audio=[];await this.refreshAudio();
   if(c.mode==='game'){let ready=false;for(let i=0;i<60;i++){if(await this.video.check()){ready=true;break;}await new Promise(r=>setTimeout(r,200));}if(!ready)throw new Error('Oyun ve Windows pencere yakalama görüntü alamadı. Oyunu açıp hedef adı kontrol et; gerekirse kenarlıksız pencere modunu dene.');}
   await o.call('StartReplayBuffer');this.running=true;this.started=Date.now();
-  this.watcher=spawn(path.join(__dirname,'../tools/window-watcher.exe'),[],{windowsHide:true,stdio:['ignore','pipe','ignore']});let tail='';
+  this.watcher=spawn(path.join(__dirname,'../tools/window-watcher.exe'),c.targetExe?['--target-exe',c.targetExe]:[],{windowsHide:true,stdio:['ignore','pipe','ignore']});let tail='';
   this.watcher.on('error',e=>this.emit('warning','Etkin pencere izlenemiyor: '+e.message));
   this.watcher.stdout.on('data',b=>{tail+=b.toString();const lines=tail.split(/\r?\n/);tail=lines.pop();for(const line of lines)try{this.onFocus(JSON.parse(line)).catch(e=>this.emit('warning',e.message));}catch{}});
   this.audioTimer=setInterval(()=>this.refreshAudio().catch(e=>this.emit('warning',e.message)),this.dynamicAudio?1000:12000);
@@ -60,12 +86,26 @@ class Capture extends EventEmitter{
   const work=(this.focusQueue||Promise.resolve()).catch(()=>{}).then(()=>this.applyFocus(f));this.focusQueue=work;return work;
  }
  async applyFocus(f){
-  if(!this.running)return;const isGame=gameProcess(f.exe,this.config.targetExe);let targetError;
+  if(!this.running)return;
+  let displayError;
+  if(f.displayError){this.publishDisplaySelection({...this.displaySelection,fallback:true,reason:'enumeration-failed',error:f.displayError});displayError=new Error(f.displayError);if(typeof f.exe!=='string')throw displayError;}
+  const isGame=gameProcess(f.exe||'',this.config.targetExe);let targetError;
   if(isGame){this.activeGameExe=f.exe;this.lastGame=gameName(f.exe);
    if(this.lastWindow!==f.hwnd){const escape=s=>s.replaceAll('#','#22').replaceAll(':','#3A');try{await this.video?.setTarget([f.title,f.class,f.exe].map(escape).join(':'));this.lastWindow=f.hwnd;}catch(error){targetError=error;}}
   }
+  const game=f.gameWindow&&gameProcess(f.gameWindow.exe,this.config.targetExe)?f.gameWindow:isGame?f:null;
+  if(game?.monitorId)this.gameMonitorId=game.monitorId;
+  try{
+   if(displayError)throw displayError;
+   if(f.displays){
+    let displays;
+    try{displays=reconcileDisplays(f.displays,(await this.obs.call('GetInputPropertiesListPropertyItems',{inputName:'Klip Ekran',propertyName:'monitor_id'})).propertyItems);}
+    catch(error){this.publishDisplaySelection({...this.displaySelection,fallback:true,reason:'enumeration-failed',error:error.message});throw error;}
+    await this.acceptDisplays(displays);
+   }else if(this.displays.length)await this.applyDisplaySelection();
+  }catch(error){displayError=error;}
   if(this.focus!==isGame){this.focus=isGame;await this.updateVisibility(isGame);this.emit('focus',{game:this.lastGame,isGame});if(isGame)this.refreshAudio().catch(()=>{});}
-  if(targetError)throw targetError;
+  if(targetError||displayError)throw targetError||displayError;
  }
  async refreshAudio(){
   if(this.recoveryRequired?.keepAlive)return;
