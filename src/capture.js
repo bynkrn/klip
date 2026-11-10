@@ -4,6 +4,8 @@ const {EventEmitter}=require('node:events');
 const {VideoSources}=require('./video-sources');
 const {normalizeDisplays,reconcileDisplays,selectDisplay,enumerateDisplays}=require('./display-selection');
 const {resolveAudioSync,inputSyncOffset}=require('./audio-sync');
+const {translate}=require('./i18n');
+const recoveryManifestName=name=>/^Ember-Recovery-.*\.json$/.test(name);
 const gameProcess=(exe,target)=>target?exe.toLowerCase()===target.toLowerCase():/^(VALORANT.*|cs2|quakelive.*|ddnet.*|r5apex|FortniteClient.*|Overwatch|dota2|RocketLeague|RainbowSix.*)\.exe$/i.test(exe);
 const gameName=exe=>/VALORANT/i.test(exe)?'Valorant':/^cs2/i.test(exe)?'Counter-Strike 2':/quakelive/i.test(exe)?'Quake Live':exe.replace(/\.exe$/i,'');
 class Capture extends EventEmitter{
@@ -61,7 +63,12 @@ class Capture extends EventEmitter{
   for(const input of (await o.call('GetInputList')).inputs)if(/^Klip Ses [2-5]$/.test(input.inputName))await o.call('SetInputMute',{inputName:input.inputName,inputMuted:true}).catch(()=>{});
   await o.call('SetStudioModeEnabled',{studioModeEnabled:false});
   await o.call('SetVideoSettings',{baseWidth:Number(c.resolution.split('x')[0]),baseHeight:Number(c.resolution.split('x')[1]),outputWidth:Number(c.resolution.split('x')[0]),outputHeight:Number(c.resolution.split('x')[1]),fpsNumerator:c.fps==='custom'?Number(c.customFps):Number(c.fps),fpsDenominator:1});
-  const kinds=(await o.call('GetInputKindList')).inputKinds;this.dynamicAudio=kinds.includes('ember_process_audio_capture');this.emit('diagnostic',{kinds,dynamicAudio:this.dynamicAudio});await this.refreshRecoveries();
+  const kinds=(await o.call('GetInputKindList')).inputKinds;this.dynamicAudio=kinds.includes('ember_process_audio_capture');this.emit('diagnostic',{kinds,dynamicAudio:this.dynamicAudio});
+  const pending=await this.refreshRecoveries();
+  if(c.storage!=='ram'){
+   const message=pending.some(item=>item.unavailable)?'Bazı kurtarma kayıtları okunamıyor. Ayarlar → Kayıt bölümünden sağlam kayıtları kurtar ve kalan dosyaları arşivle.':pending.length>=4?'Dört kayıt kurtarma bekliyor. Tamponu başlatmadan önce Ayarlar → Kayıt bölümünden kurtar.':'';
+   if(message)throw new Error(translate(message,c.language));
+  }
   await this.ensureInput('Klip Ekran','monitor_capture',{monitor_id:'DUMMY',capture_cursor:c.cursor,method:0},c.mode!=='game');
   await this.ensureInput('Klip Oyun','game_capture',{capture_mode:'any_fullscreen',capture_cursor:c.cursor,allow_transparency:false,limit_framerate:true,capture_audio:false},false);
   const items=(await o.call('GetSceneItemList',{sceneName:'Klip'})).sceneItems;this.displayId=items.find(i=>i.sourceName==='Klip Ekran').sceneItemId;this.gameId=items.find(i=>i.sourceName==='Klip Oyun').sceneItemId;
@@ -156,14 +163,50 @@ class Capture extends EventEmitter{
  }
  async refreshRecoveries(){
   if(this.obs.ready){this.recoveryManifests=(await this.obs.call('ListRecoveryManifests')).manifests||[];}
-  else if(this.bufferDir){const files=await fs.readdir(this.bufferDir).catch(()=>[]);this.recoveryManifests=files.filter(name=>/^Ember-Recovery-\d+-\d+-\d+\.json$/.test(name)).map(name=>({manifest:path.join(this.bufferDir,name)}));}
+  else if(this.bufferDir){
+   const files=await fs.readdir(this.bufferDir).catch(error=>{if(error.code==='ENOENT')return[];throw error;});
+   const previous=new Map(this.recoveryManifests.map(item=>[item.manifest,item]));
+   this.recoveryManifests=files.filter(recoveryManifestName).map(name=>{
+    const manifest=path.join(this.bufferDir,name);
+    return previous.get(manifest)||{manifest};
+   });
+  }
   this.emit('recoveries',this.recoveryManifests);return this.recoveryManifests;
  }
  async recoverReplays(){
   if(!this.bufferDir||!this.config)throw new Error('Kurtarma klasörü hazır değil.');
   if(!this.obs.ready){await this.obs.launch(this.config,this.bufferDir);const kinds=(await this.obs.call('GetInputKindList')).inputKinds;this.dynamicAudio=kinds.includes('ember_process_audio_capture');}
-  const manifests=await this.refreshRecoveries();for(const recovery of manifests){await this.obs.call('RecoverReplay',{manifest:recovery.manifest},150000);await this.automaticPreservation;}
-  await this.refreshRecoveries();return this.recoveryManifests;
+  const manifests=await this.refreshRecoveries(),failures=[];
+  for(const recovery of manifests){
+   try{
+    if(recovery.unavailable)throw new Error(recovery.message);
+    await this.obs.call('RecoverReplay',{manifest:recovery.manifest},150000);
+    await this.automaticPreservation;
+   }catch(error){failures.push(error.message);}
+  }
+  await this.refreshRecoveries();
+  if(failures.length)throw new Error(translate('Bazı kayıtlar kurtarılamadı. Dosyaları arşivleyip yeni bir tampon başlatabilirsin.',this.config.language)+' '+failures[0]);
+  return this.recoveryManifests;
+ }
+ async archiveRecoveries(clipFolder){
+  const text=value=>translate(value,this.config?.language);
+  if(!this.bufferDir||this.running||this.recoveryRequired?.keepAlive)throw new Error(text('Önce tamponu durdur veya canlı tamponu kurtar.'));
+  await this.automaticPreservation?.catch(()=>{});
+  await this.obs.close();
+  const source=this.bufferDir,info=await fs.lstat(source);
+  if(!info.isDirectory()||info.isSymbolicLink())throw new Error(text('Kurtarma klasörü arşivlenemedi.'));
+  const resolved=await fs.realpath(source);
+  const library=await fs.realpath(clipFolder).catch(error=>{if(error.code==='ENOENT')return path.resolve(clipFolder);throw error;});
+  const relative=path.relative(resolved,library);
+  if(!relative||!path.isAbsolute(relative)&&relative!=='..'&&!relative.startsWith('..'+path.sep))throw new Error(text('Klip klasörü tamponun içinde. Arşivlemeden önce farklı bir klip klasörü seç.'));
+  const pending=await this.refreshRecoveries();
+  if(!pending.length)throw new Error(text('Arşivlenecek kayıt bulunamadı.'));
+  // Move the whole cold journal together so unreadable manifests and their
+  // relative payload paths survive without being swept by the new buffer.
+  const archive=source+'-recovery-'+new Date().toISOString().slice(0,10)+'-'+crypto.randomUUID();
+  await fs.rename(source,archive);
+  await this.refreshRecoveries();
+  return archive;
  }
  async completeRecovery(original){
   const owner=this.owner||this,detail=this.replaySnapshots.get(original)||this.lastSnapshot;

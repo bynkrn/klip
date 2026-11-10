@@ -19,6 +19,24 @@ int main(int argc,char **argv)try{
  if(std::string(argv[1])=="verify"){
   auto data=readCheckpoint(manifest);bool droppedTail=false;for(const auto &entry:data["files"]){auto file=checkpointPayload(manifest,entry);if(std::filesystem::file_size(file)>entry["bytes"].get<uint64_t>()){std::filesystem::resize_file(file,entry["bytes"].get<uint64_t>());droppedTail=true;}}assert(droppedTail);assert(data["version"]==2);assert(data["packets"].size()==2);assert(data["applicationAudio"]["packets"].size()==3);for(const auto &record:data["packets"])assert(readCheckpointPacket(manifest,data,record)==std::vector<uint8_t>({1,2,3}));collectCheckpointOrphans(root);
   auto result=recoverCheckpointAudio({{"manifest",manifest.u8string()},{"folder",(root/"wav").u8string()}});assert(result["tracks"].size()==2);assert(result["tracks"][0]["id"]=="game");assert(result["tracks"][0]["name"]=="Game with space");assert(result["tracks"][0]["sourceOffsetNs"]=="100000000");auto wav=std::filesystem::u8path(result["tracks"][0]["file"].get<std::string>());assert(std::filesystem::file_size(wav)==44+96000*8);std::ifstream in(wav,std::ios::binary);float zero=9,signal=0;in.seekg(44);in.read((char*)&zero,4);in.seekg(44+4800*8);in.read((char*)&signal,4);assert(zero==0&&signal==.5f);in.close();assert(result["tracks"][1]["name"]=="Chat App");assert(result["tracks"][1]["sourceOffsetNs"]=="500000000");auto chatWave=std::filesystem::u8path(result["tracks"][1]["file"].get<std::string>());std::ifstream chatInput(chatWave,std::ios::binary);chatInput.seekg(44+24000*8);float speech=0;chatInput.read((char*)&speech,4);assert(speech==.15f);chatInput.close();
+  auto malformed=root/"Ember-Recovery-broken.json";
+  auto published=root/"Ember-Recovery-1-2-4.json";
+  std::filesystem::copy_file(manifest,published);
+  std::ofstream(malformed)<<"{";
+  assert(!inspectCheckpointRetention(root).readable);
+  bool blocked=false;
+  try{collectCheckpointOrphans(root);}catch(const std::runtime_error &e){blocked=std::string(e.what()).find("unreadable")!=std::string::npos;}
+  assert(blocked);
+  completeCheckpoint(published);
+  assert(!std::filesystem::exists(published)&&std::filesystem::exists(malformed));
+  for(const auto &file:data["files"])assert(std::filesystem::exists(checkpointPayload(manifest,file)));
+  std::filesystem::remove(malformed);
+  for(int i=4;i<=6;++i)std::filesystem::copy_file(manifest,root/("Ember-Recovery-1-2-"+std::to_string(i)+".json"));
+  blocked=false;
+  try{collectCheckpointOrphans(root);}catch(const std::runtime_error &e){blocked=std::string(e.what()).find("Four recordings")!=std::string::npos;}
+  assert(blocked);
+  for(int i=4;i<=6;++i)completeCheckpoint(root/("Ember-Recovery-1-2-"+std::to_string(i)+".json"));
+  assert(inspectCheckpointRetention(root).count==1);
   auto audioRecord=data["applicationAudio"]["packets"][0];auto payload=checkpointPayload(manifest,data["files"][audioRecord[0].get<size_t>()]);std::fstream corrupt(payload,std::ios::binary|std::ios::in|std::ios::out);corrupt.seekp(audioRecord[1].get<std::streamoff>());corrupt.put(0x7f);corrupt.close();bool rejected=false;try{recoverCheckpointAudio({{"manifest",manifest.u8string()},{"folder",(root/"retry").u8string()}});}catch(const std::exception &e){rejected=std::string(e.what()).find("checksum")!=std::string::npos;}assert(rejected);assert(std::filesystem::exists(manifest));std::cout<<"Completed GOPs, rotated leases, abrupt death, durable aligned app stems, names, offsets and corruption retention passed\n";
  }return 0;
 }catch(const std::exception &e){std::cerr<<e.what()<<'\n';return 1;}

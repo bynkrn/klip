@@ -58,7 +58,7 @@ class Output {
  static const char *name(void*){return "Ember bounded replay journal";}
  static void *create(obs_data_t *settings,obs_output_t *output){try{return new Output(settings,output);}catch(const std::exception &e){obs_output_set_last_error(output,e.what());return nullptr;}}
  static void destroy(void *data){delete static_cast<Output*>(data);}
- static bool start(void *data){auto &self=*static_cast<Output*>(data);try{if(self.storage==Storage::Disk)require(collectCheckpointOrphans(self.directory)<4,"Recover pending capture sessions before starting another disk buffer: the four-session limit or unreadable recovery metadata prevents safe retention.");if(self.saveThread.joinable())self.saveThread.join();if(!obs_output_can_begin_data_capture(self.output,0)||!obs_output_initialize_encoders(self.output,0))return false;{std::lock_guard<std::mutex> lock(self.state);self.ring=std::make_unique<Ring>(self.storage,self.directory,(int64_t)self.seconds*1000000000LL,self.limit,self.reserve);self.haveVideoOrigin=false;self.videoOriginNs=0;self.failureReason.clear();self.recoveryRequested=false;self.emergencyManifest.clear();self.heldSnapshotId.clear();self.heldVideoSnapshot.reset();}self.packetAt=0;self.videoAt=0;self.videoFrames=0;self.active=true;obs_output_begin_data_capture(self.output,0);self.startCheckpoints();return true;}catch(const std::exception &e){obs_output_set_last_error(self.output,e.what());return false;}}
+ static bool start(void *data){auto &self=*static_cast<Output*>(data);try{if(self.storage==Storage::Disk)collectCheckpointOrphans(self.directory);if(self.saveThread.joinable())self.saveThread.join();if(!obs_output_can_begin_data_capture(self.output,0)||!obs_output_initialize_encoders(self.output,0))return false;{std::lock_guard<std::mutex> lock(self.state);self.ring=std::make_unique<Ring>(self.storage,self.directory,(int64_t)self.seconds*1000000000LL,self.limit,self.reserve);self.haveVideoOrigin=false;self.videoOriginNs=0;self.failureReason.clear();self.recoveryRequested=false;self.emergencyManifest.clear();self.heldSnapshotId.clear();self.heldVideoSnapshot.reset();}self.packetAt=0;self.videoAt=0;self.videoFrames=0;self.active=true;obs_output_begin_data_capture(self.output,0);self.startCheckpoints();return true;}catch(const std::exception &e){obs_output_set_last_error(self.output,e.what());return false;}}
  static void stop(void *data,uint64_t){auto &self=*static_cast<Output*>(data);self.active=false;obs_output_end_data_capture(self.output);self.stopCheckpoints(self.failureReason.empty()||!self.emergencyManifest.empty());}
  static void encoded(void *data,encoder_packet *packet){if(!packet)static_cast<Output*>(data)->fail("NVENC or AAC encoding failed");}
  static void packet(obs_output_t*,encoder_packet *packet,encoder_packet_time *timing,void *data){auto &self=*static_cast<Output*>(data);if(!self.active)return;try{self.append(*packet,timing);}catch(const std::exception &e){self.fail(e.what());}}
@@ -165,7 +165,26 @@ public:
    });return result;
   }catch(...){saving=false;throw;}
  }
- static json listRecoveries(const std::filesystem::path &directory){json manifests=json::array();std::error_code error;for(const auto &entry:std::filesystem::directory_iterator(directory,error)){if(!recoveryManifestName(entry.path())||!std::filesystem::is_regular_file(entry.symlink_status()))continue;try{auto data=readCheckpoint(entry.path());auto summary=data.at("snapshot");if(summary.value("periodic",false)&&checkpointOwnerAlive(summary))continue;summary["manifest"]=entry.path().u8string();summary["bytes"]=data["bytes"];manifests.push_back(summary);}catch(const std::exception &e){manifests.push_back({{"manifest",entry.path().u8string()},{"unavailable",true},{"message",e.what()}});}}return{{"manifests",manifests}};}
+ static json listRecoveries(const std::filesystem::path &directory){
+  json manifests=json::array();
+  std::error_code error;
+  for(const auto &entry:std::filesystem::directory_iterator(directory,error)){
+   if(!recoveryManifestName(entry.path()))continue;
+   try{
+    auto data=readCheckpoint(entry.path());
+    auto summary=data.at("snapshot");
+    if(summary.value("periodic",false)&&checkpointOwnerAlive(summary))continue;
+    std::set<std::filesystem::path> files;
+    retainCheckpointFiles(files,entry.path(),data);
+    summary["manifest"]=entry.path().u8string();
+    summary["bytes"]=data["bytes"];
+    manifests.push_back(summary);
+   }catch(const std::exception &e){
+    manifests.push_back({{"manifest",entry.path().u8string()},{"unavailable",true},{"message",e.what()}});
+   }
+  }
+  return {{"manifests",manifests}};
+ }
  static json recover(const json &request,const std::filesystem::path &helper){
   auto manifest=std::filesystem::u8path(request.at("manifest").get<std::string>());auto data=readCheckpoint(manifest);require(!data["snapshot"].value("periodic",false)||!checkpointOwnerAlive(data["snapshot"]),"The active recording checkpoint cannot be recovered before its owner stops");auto destination=std::filesystem::u8path(request.value("outputDirectory",manifest.parent_path().u8string()));require(destination.is_absolute(),"Absolute recovery output directory required");std::filesystem::create_directories(destination);const auto id=data.at("snapshot").at("snapshotId").get<std::string>();const auto final=destination/("Ember-Recovered-"+id+".mkv"),partial=std::filesystem::path(final.wstring()+L".partial.mkv");std::error_code error;auto space=std::filesystem::space(destination,error);require(!error&&space.available>data.at("bytes").get<uint64_t>()+64*1048576ULL,"Free disk space before recovering the retained replay");
   auto args=data.at("codec").at("args").get<std::vector<std::string>>();require(args.size()>=4,"Invalid recovery mux configuration");args[0]=partial.u8string();auto headers=data["codec"]["headers"].get<std::vector<std::vector<uint8_t>>>();auto rates=data["codec"]["sampleRates"].get<std::vector<int>>();require(headers.size()>=1&&headers.size()<=7&&rates.size()<=6,"Invalid recovery codec headers");
@@ -177,12 +196,8 @@ public:
  }
  static json recoverAudio(const json &request){return recoverCheckpointAudio(request);}
  static json completeRecovery(const json &request){
-  auto manifest=std::filesystem::u8path(request.at("manifest").get<std::string>());auto data=readCheckpoint(manifest);require(!data["snapshot"].value("periodic",false)||!checkpointOwnerAlive(data["snapshot"]),"The active recording checkpoint cannot be completed before its owner stops");std::vector<std::filesystem::path> files;for(const auto &file:data["files"])files.push_back(checkpointPayload(manifest,file));
-  std::set<std::filesystem::path> referenced;for(const auto &entry:std::filesystem::directory_iterator(manifest.parent_path()))if(entry.path()!=manifest&&recoveryManifestName(entry.path())){auto other=readCheckpoint(entry.path());for(const auto &file:other["files"])referenced.insert(checkpointPayload(entry.path(),file));}
-  // Retire the manifest durably before any payload deletion. A second crash
-  // can leave garbage, never a published manifest referencing deleted bytes.
-  auto completed=std::filesystem::path(manifest.wstring()+L".completed");require(MoveFileExW(manifest.c_str(),completed.c_str(),MOVEFILE_WRITE_THROUGH|MOVEFILE_REPLACE_EXISTING)!=FALSE,"Cannot retire completed recovery manifest");
-  for(const auto &file:files)if(!referenced.count(file)){std::error_code ignored;std::filesystem::remove(file,ignored);bool empty=true;for(const auto &entry:std::filesystem::directory_iterator(file.parent_path(),ignored))if(entry.path().filename()!=L".preserve")empty=false;if(empty){std::filesystem::remove(file.parent_path()/L".preserve",ignored);std::filesystem::remove(file.parent_path(),ignored);}}std::error_code ignored;std::filesystem::remove(completed,ignored);return{{"completed",true}};
+  completeCheckpoint(std::filesystem::u8path(request.at("manifest").get<std::string>()));
+  return {{"completed",true}};
  }
 };
 }

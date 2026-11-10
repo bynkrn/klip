@@ -5,6 +5,7 @@ using System.Drawing;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -114,6 +115,7 @@ class UpdateInstaller {
   protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);using(var back=new SolidBrush(Color.FromArgb(65,42,49)))e.Graphics.FillRectangle(back,ClientRectangle);if(Value.HasValue)using(var fill=new SolidBrush(Color.FromArgb(242,157,113)))e.Graphics.FillRectangle(fill,0,0,(int)(Width*Math.Max(0,Math.Min(1,Value.Value))),Height);}
  }
  sealed class ProgressWindow:Form {
+  [DllImport("user32.dll")]static extern bool ShowWindow(IntPtr window,int command);
   readonly bool english; readonly Label heading,phase,percent; readonly TextBox details; readonly ProgressMeter meter; readonly Button close,open; bool terminal; Action reopen; System.Windows.Forms.Timer finishedTimer;
   string TextFor(string tr,string en){return english?en:tr;}
   public ProgressWindow(Job job){
@@ -125,7 +127,11 @@ class UpdateInstaller {
    percent=new Label{Location=new Point(33,163),Size=new Size(550,24),ForeColor=Color.FromArgb(221,171,147)};
    details=new TextBox{Multiline=true,ReadOnly=true,BorderStyle=BorderStyle.None,ScrollBars=ScrollBars.None,WordWrap=true,BackColor=Color.FromArgb(29,22,30),Text=TextFor("Uygulama ve tampon hazır olunca Ember açılacak. Bu pencereyi açık bırakın.","Ember will open when the app and recording buffer are ready. Keep this window open."),Location=new Point(33,204),Size=new Size(550,109),ForeColor=Color.FromArgb(219,198,192)};
    close=MakeButton(TextFor("Kapat","Close"),465);close.Enabled=false;close.Visible=false;close.Click+=delegate{Close();};open=MakeButton(TextFor("Ember'ı aç","Open Ember"),311);open.Enabled=false;open.Visible=false;open.Click+=delegate{if(reopen!=null){Action action=reopen;reopen=null;open.Enabled=false;action();}};
-   Controls.AddRange(new Control[]{heading,phase,meter,percent,details,close,open});FormClosing+=delegate(object sender,FormClosingEventArgs e){if(!terminal)e.Cancel=true;};
+   Controls.AddRange(new Control[]{heading,phase,meter,percent,details,close,open});
+   // A legacy launcher uses SW_HIDE. Its startup flag consumes the first ShowWindow;
+   // queue a second native show after WinForms creates the window so progress is visible.
+   Shown+=delegate{BeginInvoke(new Action(delegate{if(!IsDisposed){ShowWindow(Handle,5);Activate();}}));};
+   FormClosing+=delegate(object sender,FormClosingEventArgs e){if(!terminal)e.Cancel=true;};
   }
   Button MakeButton(string text,int x){return new Button{Text=text,Location=new Point(x,331),Size=new Size(120,35),FlatStyle=FlatStyle.Flat,BackColor=Color.FromArgb(66,42,46),ForeColor=Color.FromArgb(250,225,210)};}
   public void Publish(State state,bool done,Action action){if(IsDisposed)return;if(InvokeRequired){try{BeginInvoke(new Action(delegate{Publish(state,done,action);}));}catch(InvalidOperationException){}return;}terminal=done;reopen=action;meter.Value=state.progress;meter.Invalidate();percent.Text=state.progress.HasValue?Math.Round(state.progress.Value*100)+"%"+(state.totalBytes.HasValue?"  ·  "+FormatBytes(state.doneBytes.Value)+" / "+FormatBytes(state.totalBytes.Value):""):"";

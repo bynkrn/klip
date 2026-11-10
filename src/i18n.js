@@ -37,6 +37,20 @@
  rows.push(['Klip hazırlanırken tampon durdurulamaz.','The buffer cannot be stopped while a clip is being prepared.'],['Önce bekleyen tamponu kurtar.','Recover the pending buffer first.']);
  rows.push(['Kurtarma Bekleniyor','Waiting For Recovery'],['Tamponu Kurtar','Recover Buffer']);
  rows.push(['Kurtarma Gereken Kayıtlar','Recordings Needing Recovery'],['Kurtar','Recover'],['Kurtarılıyor…','Recovering…'],['RAM tamponu korunuyor. Diskte yer açıp Kurtar’a bas; Ember’ı açık tut.','The RAM buffer is being kept. Free disk space and choose Recover; keep Ember open.'],['Kayıtlar diskte korunuyor. Diskte yer açıp Kurtar’a bas.','The recordings are kept on disk. Free disk space and choose Recover.'],['Kurtarma masaüstü uygulamasında kullanılabilir.','Recovery is available in the desktop app.'],['Kurtarma servisi henüz hazır değil.','The recovery service is not ready yet.'],['Kaydedilmemiş RAM Tamponu','Unsaved RAM Buffer'],['RAM tamponu henüz güvenli bir klip olarak kaydedilmedi.','The RAM buffer has not been saved as a verified clip yet.'],['Çıkarsan bu tampon silinir. Ember’ı açık tutup diskte yer açtıktan sonra Kurtar’a basabilirsin.','Exiting will discard this buffer. Keep Ember open, free disk space, then choose Recover.'],['Tamponu Sil Ve Çık','Discard Buffer And Exit']);
+ rows.push(
+  ['Bazı kurtarma kayıtları okunamıyor. Ayarlar → Kayıt bölümünden sağlam kayıtları kurtar ve kalan dosyaları arşivle.','Some recovery data cannot be read. Recover the available recordings in Settings → Capture and archive the remaining files.'],
+  ['Dört kayıt kurtarma bekliyor. Tamponu başlatmadan önce Ayarlar → Kayıt bölümünden kurtar.','Four recordings are awaiting recovery. Recover them in Settings → Capture before starting the buffer.'],
+  ['Bazı kayıtlar kurtarılamadı. Dosyaları arşivleyip yeni bir tampon başlatabilirsin.','Some recordings could not be recovered. You can archive the files and start a new buffer.'],
+  ['Kurtarma Dosyalarını Arşivle','Archive Recovery Files'],
+  ['Bekleyen kayıt dosyaları bir arşiv klasörüne taşınacak.','Pending recording files will be moved to an archive folder.'],
+  ['Önce Kurtar ile kullanılabilir klipleri kaydedebilirsin. Arşivleme dosyaları diskte korur ve yeni bir tampon başlatmana izin verir.','Choose Recover first to save the available clips. Archiving keeps the files on disk and lets you start a new buffer.'],
+  ['Arşivle','Archive'],['Arşivleniyor…','Archiving…'],
+  ['Kurtarma dosyaları arşivlendi. Tamponu yeniden başlatabilirsin.','Recovery files were archived. You can restart the buffer.'],
+  ['Önce tamponu durdur veya canlı tamponu kurtar.','Stop the buffer or recover the live buffer first.'],
+  ['Kurtarma klasörü arşivlenemedi.','Could not archive the recovery folder.'],
+  ['Klip klasörü tamponun içinde. Arşivlemeden önce farklı bir klip klasörü seç.','The clip folder is inside the buffer. Choose a different clip folder before archiving.'],
+  ['Arşivlenecek kayıt bulunamadı.','No recordings were found to archive.']
+ );
  const catalog=new Map(rows.map(([tr,en])=>[normalize(tr),{tr,en}]));
  function translate(text,language='tr'){
   if(typeof text!=='string'||!text.trim())return text;const lang=language==='en'?'en':'tr',trimmed=text.trim(),known=catalog.get(normalize(trimmed));let result;

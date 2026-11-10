@@ -26,12 +26,56 @@ inline bool checkpointOwnerAlive(const RecoveryJson &identity){auto pid=identity
 inline bool retireCheckpoint(const std::filesystem::path &manifest){if(!std::filesystem::exists(manifest))return true;auto completed=std::filesystem::path(manifest.wstring()+L".completed");return MoveFileExW(manifest.c_str(),completed.c_str(),MOVEFILE_WRITE_THROUGH|MOVEFILE_REPLACE_EXISTING)!=FALSE;}
 inline bool deadJournal(const std::filesystem::path &folder){auto name=folder.filename().wstring();if(name.rfind(L".ember-ring-",0)!=0||(GetFileAttributesW(folder.c_str())&FILE_ATTRIBUTE_REPARSE_POINT))return false;return journalOwnerDead(name);}
 
+inline void retainCheckpointFiles(std::set<std::filesystem::path> &files,const std::filesystem::path &manifest,const RecoveryJson &data){
+ if(!data.at("files").is_array()||data["files"].empty())throw std::runtime_error("Invalid recovery payload list");
+ for(const auto &entry:data["files"])files.insert(checkpointPayload(manifest,entry).lexically_normal());
+}
+struct CheckpointRetention{
+ size_t count=0;
+ bool readable=true;
+ std::set<std::filesystem::path> files;
+};
+inline CheckpointRetention inspectCheckpointRetention(const std::filesystem::path &root,const std::filesystem::path &exclude={}){
+ CheckpointRetention result;
+ std::error_code error;
+ for(const auto &entry:std::filesystem::directory_iterator(root,error)){
+  if(entry.path()==exclude||!recoveryManifestName(entry.path()))continue;
+  ++result.count;
+  try{retainCheckpointFiles(result.files,entry.path(),readCheckpoint(entry.path()));}
+  catch(...){result.readable=false;}
+ }
+ if(error)result.readable=false;
+ return result;
+}
 // Reclaim only recognized dead-owner payloads absent from all valid manifests.
 // A malformed manifest suspends collection rather than risking unsaved data.
-inline size_t collectCheckpointOrphans(const std::filesystem::path &root){std::set<std::filesystem::path> referenced;size_t count=0;bool valid=true;std::error_code error;for(const auto &entry:std::filesystem::directory_iterator(root,error))if(recoveryManifestName(entry.path())){++count;try{auto data=readCheckpoint(entry.path());for(const auto &file:data["files"])referenced.insert(checkpointPayload(entry.path(),file).lexically_normal());}catch(...){valid=false;}}if(!valid)return std::max<size_t>(4,count);
+inline void collectCheckpointOrphans(const std::filesystem::path &root){
+ const auto retained=inspectCheckpointRetention(root);
+ if(!retained.readable)throw std::runtime_error("Replay recovery data is unreadable. Recover the available recordings or archive the pending data in Settings.");
+ if(retained.count>=4)throw std::runtime_error("Four recordings are awaiting recovery. Recover them in Settings before starting the disk buffer.");
+ const auto &referenced=retained.files;
+ std::error_code error;
  for(const auto &entry:std::filesystem::directory_iterator(root,error)){auto extension=entry.path().extension();if(extension!=L".completed"&&extension!=L".tmp")continue;auto original=entry.path();original.replace_extension();if(!recoveryManifestName(original)||(GetFileAttributesW(entry.path().c_str())&FILE_ATTRIBUTE_REPARSE_POINT))continue;auto name=original.stem().wstring();auto end=name.find(L'-',15);if(end==std::wstring::npos)continue;uint64_t pid=0;try{pid=std::stoull(name.substr(15,end-15));}catch(...){continue;}if(!pid||pid>MAXDWORD)continue;HANDLE owner=OpenProcess(SYNCHRONIZE,FALSE,(DWORD)pid);bool dead=false;if(owner){dead=WaitForSingleObject(owner,0)==WAIT_OBJECT_0;CloseHandle(owner);}else dead=GetLastError()==ERROR_INVALID_PARAMETER;if(dead||extension==L".completed")std::filesystem::remove(entry.path(),error);}
 
- for(const auto &base:{root,root/"application-audio",root/"audio-history"}){if(!std::filesystem::exists(base))continue;for(const auto &entry:std::filesystem::directory_iterator(base,error)){if(!deadJournal(entry.path()))continue;bool kept=false,owned=true;std::vector<std::filesystem::path> garbage;for(const auto &file:std::filesystem::directory_iterator(entry.path(),error)){if(file.path().filename()==L".preserve")continue;auto stem=file.path().stem().wstring();if(file.path().extension()!=L".packets"||stem.empty()||stem.find_first_not_of(L"0123456789")!=std::wstring::npos||(GetFileAttributesW(file.path().c_str())&FILE_ATTRIBUTE_REPARSE_POINT)){owned=false;break;}if(referenced.count(file.path().lexically_normal()))kept=true;else garbage.push_back(file.path());}if(!owned||error)continue;for(const auto &file:garbage)std::filesystem::remove(file,error);if(!kept){std::filesystem::remove(entry.path()/L".preserve",error);std::filesystem::remove(entry.path(),error);}}}return count;}
+ for(const auto &base:{root,root/"application-audio",root/"audio-history"}){if(!std::filesystem::exists(base))continue;for(const auto &entry:std::filesystem::directory_iterator(base,error)){if(!deadJournal(entry.path()))continue;bool kept=false,owned=true;std::vector<std::filesystem::path> garbage;for(const auto &file:std::filesystem::directory_iterator(entry.path(),error)){if(file.path().filename()==L".preserve")continue;auto stem=file.path().stem().wstring();if(file.path().extension()!=L".packets"||stem.empty()||stem.find_first_not_of(L"0123456789")!=std::wstring::npos||(GetFileAttributesW(file.path().c_str())&FILE_ATTRIBUTE_REPARSE_POINT)){owned=false;break;}if(referenced.count(file.path().lexically_normal()))kept=true;else garbage.push_back(file.path());}if(!owned||error)continue;for(const auto &file:garbage)std::filesystem::remove(file,error);if(!kept){std::filesystem::remove(entry.path()/L".preserve",error);std::filesystem::remove(entry.path(),error);}}}}
+inline void completeCheckpoint(const std::filesystem::path &manifest){
+ auto data=readCheckpoint(manifest);
+ if(data["snapshot"].value("periodic",false)&&checkpointOwnerAlive(data["snapshot"]))throw std::runtime_error("The active recording checkpoint cannot be completed before its owner stops");
+ std::set<std::filesystem::path> files;
+ retainCheckpointFiles(files,manifest,data);
+ const auto other=inspectCheckpointRetention(manifest.parent_path(),manifest);
+ if(!retireCheckpoint(manifest))throw std::runtime_error("Cannot retire completed recovery manifest");
+ // An unreadable sibling may still reference these bytes.
+ std::error_code ignored;
+ if(other.readable)for(const auto &file:files)if(!other.files.count(file)){
+  std::filesystem::remove(file,ignored);
+  auto parent=file.parent_path();
+  bool empty=true;
+  for(const auto &entry:std::filesystem::directory_iterator(parent,ignored))if(entry.path().filename()!=L".preserve")empty=false;
+  if(empty&&!ignored){std::filesystem::remove(parent/L".preserve",ignored);std::filesystem::remove(parent,ignored);}
+ }
+ std::filesystem::remove(std::filesystem::path(manifest.wstring()+L".completed"),ignored);
+}
 inline void discardCheckpoint(const std::filesystem::path &manifest,const Snapshot &snapshot){if(!retireCheckpoint(manifest))throw std::runtime_error("Cannot retire replay checkpoint; retained payloads preserved");std::set<Segment*> seen;for(const auto &packet:snapshot.packets)if(seen.insert(packet.segment.get()).second)packet.segment->releaseDiskFilePreservation();std::error_code ignored;std::filesystem::remove(std::filesystem::path(manifest.wstring()+L".completed"),ignored);}
 inline RecoveryJson recoverCheckpointAudio(const RecoveryJson &request){
  using json=RecoveryJson;auto require=[](bool ok,const std::string &message){if(!ok)throw std::runtime_error(message);};
