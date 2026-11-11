@@ -10,7 +10,7 @@ test('a corrupt manifest does not prevent recovering and publishing later record
   assert.equal(type,'RecoverReplay');tried.push(manifest);
   capture.automaticPreservation=Promise.resolve().then(()=>{manifests=[broken];});
  };
- await assert.rejects(capture.recoverReplays(),/Some recordings could not be recovered.*Invalid manifest/);
+ await assert.rejects(capture.recoverReplays(),/Bazı kayıtlar kurtarılamadı.*Invalid manifest/);
  assert.deepEqual(tried,[good.manifest]);
  assert.deepEqual(capture.recoveryManifests,[broken]);
 });

@@ -49,7 +49,14 @@
   ['Önce tamponu durdur veya canlı tamponu kurtar.','Stop the buffer or recover the live buffer first.'],
   ['Kurtarma klasörü arşivlenemedi.','Could not archive the recovery folder.'],
   ['Klip klasörü tamponun içinde. Arşivlemeden önce farklı bir klip klasörü seç.','The clip folder is inside the buffer. Choose a different clip folder before archiving.'],
-  ['Arşivlenecek kayıt bulunamadı.','No recordings were found to archive.']
+  ['Arşivlenecek kayıt bulunamadı.','No recordings were found to archive.'],
+  ['Kayıt kurtarıldı; görüntü ve kullanılabilir ayrı ses izleri klibe eklendi.','Recording recovered. Video and available separate audio tracks were added to the clip.'],
+  ['Klip kaydedildi. Bazı uygulamaların ayrı ses izi kullanılamadı; birleşik ses korundu.','Clip saved. Some separate app audio tracks were unavailable. The combined audio was kept.'],
+  ['Tampon sınırına ulaşıldı; mevcut klip otomatik korundu.','The buffer reached its limit. The clip was saved automatically.'],
+  ['Tampon kurtarma bekliyor.','The buffer is awaiting recovery.'],
+  ['Önce bekleyen tamponu kurtar.','Recover the pending buffer first.'],
+  ['Kurtarma klasörü hazır değil.','The recovery folder is not ready.'],
+  ['Klip doğrulanamadı','Clip verification failed.']
  );
  const catalog=new Map(rows.map(([tr,en])=>[normalize(tr),{tr,en}]));
  function translate(text,language='tr'){
@@ -73,6 +80,13 @@
   for(const [suffix,render]of suffixes)if(key.endsWith(suffix))return render(text.slice(0,text.length-suffix.length));
   const warningPrefix=' Yenileme uyarısı: ',warning=text.indexOf(warningPrefix);if(warning>=0)return translate(text.slice(0,warning),lang)+(english?' Refresh warning: ':warningPrefix)+translate(text.slice(warning+warningPrefix.length),lang);
   const prefixes=[['Güncelleme tamamlandı; tampon başlatılamadı: ','Update completed; the replay buffer could not start: '],['Tampon yeniden başlatılamadı: ','The replay buffer could not restart: '],['Dosya okunamadı: ','Could not read file: '],['Klipler silinemedi: ','Clips could not be deleted: '],['Klipler geri yüklenemedi: ','Clips could not be restored: '],['Çöp Kutusu yüklenemedi: ','Could not load Recycle Bin: '],['Ses önizlemesi açılamadı: ','Could not open audio preview: '],['Güncelleme dosyası eksik: ','Missing update file: '],['Windows Çöp Kutusu işlemi tamamlanamadı: ','Windows Recycle Bin operation failed: '],['Windows pencere yakalama açılamadı: ','Windows window capture could not be opened: '],['Etkin pencere izlenemiyor: ','The active window could not be tracked: '],['GitHub isteği tamamlanamadı. ','GitHub request failed. '],['Son denetleme: ','Last checked: '],['Konum: ','Location: '],['Silinme: ','Deleted: '],['Klip al · ','Save Clip · ']];
+  prefixes.push(
+   ['Otomatik klip tamamlanamadı; orijinal kayıt kurtarma için korundu: ','The clip could not be saved automatically. The original recording was kept for recovery. '],
+   ['Klip kaydedildi; kurtarma günlüğü temizlenemedi: ','Clip saved. The recovery journal could not be cleaned up. '],
+   ['Klip kaydedildi; kurtarma onayı alınamadığı için orijinal kayıt ve sesler korundu: ','Clip saved. The original video and audio were kept because recovery could not be confirmed. '],
+   ['Tampon geçmişi ham dosyada korundu: ','The buffer history was kept in the original file. '],
+   ['Bazı kayıtlar kurtarılamadı. Dosyaları arşivleyip yeni bir tampon başlatabilirsin. ','Some recordings could not be recovered. You can archive the files and start a new buffer. ']
+  );
   for(const [tr,en]of prefixes)if(key.startsWith(normalize(tr)))return (english?en:tr)+translate(text.slice(tr.length),lang);
   if((match=/^Mevcut sürüm: (.+?)(?: · Yeni sürüm: (.+))?$/iu.exec(text)))return english?'Current Version: '+match[1]+(match[2]?' · New Version: '+match[2]:''):'Mevcut Sürüm: '+match[1]+(match[2]?' · Yeni Sürüm: '+match[2]:'');
   if((match=/^(\d+) klip (silindi|geri yüklendi); (\d+) klip (silinemedi|geri yüklenemedi)\. ?(.*)$/u.exec(text)))return english?count(match[1],'clip')+' '+(match[2]==='silindi'?'deleted':'restored')+'; '+count(match[3],'clip')+' could not be '+(match[4]==='silinemedi'?'deleted':'restored')+'. '+translate(match[5],lang):text;

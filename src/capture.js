@@ -185,7 +185,7 @@ class Capture extends EventEmitter{
    }catch(error){failures.push(error.message);}
   }
   await this.refreshRecoveries();
-  if(failures.length)throw new Error(translate('Bazı kayıtlar kurtarılamadı. Dosyaları arşivleyip yeni bir tampon başlatabilirsin.',this.config.language)+' '+failures[0]);
+  if(failures.length)throw new Error('Bazı kayıtlar kurtarılamadı. Dosyaları arşivleyip yeni bir tampon başlatabilirsin. '+failures[0]);
   return this.recoveryManifests;
  }
  async archiveRecoveries(clipFolder){
