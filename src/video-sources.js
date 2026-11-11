@@ -6,6 +6,7 @@ class VideoSources {
   this.method='game';this.target='';this.pendingTarget=null;this.focus=false;this.serial=Promise.resolve();
   this.stopped=false;this.failedSince=null;this.probing=false;this.windowUnavailable=false;this.hadGameImage=false;
   this.health=new Map();this.gameResets=0;this.windowAttempts=0;this.windowRetryAt=0;this.resumeUntil=0;
+  this.quake=false;this.resumeFrameAfter=null;this.warnedUnavailable=false;
  }
  enqueue(fn){const result=this.serial.then(()=>this.stopped?undefined:fn());this.serial=result.catch(()=>{});return result;}
  setDisplay(display){return this.enqueue(async()=>{
@@ -49,19 +50,45 @@ class VideoSources {
    this.health.clear();this.gameResets=0;this.windowAttempts=0;this.windowRetryAt=0;this.resumeUntil=0;
    // Quake Live's OpenGL shared-texture transport can retain a stale frame.
    // Shared memory avoids that interop path; other games keep texture capture.
-   const compatibility=/^quakelive(?:_steam)?\.exe$/i.test(selector.split(':').at(-1));
-   await this.obs.call('SetInputSettings',{inputName:'Klip Oyun',inputSettings:{capture_mode:'window',window:selector,priority:2,sli_compatibility:compatibility},overlay:true});
+   this.quake=/^quakelive(?:_steam)?\.exe$/i.test(selector.split(':').at(-1));
+   this.resumeFrameAfter=null;this.warnedUnavailable=false;
+   await this.obs.call('SetInputSettings',{inputName:'Klip Oyun',inputSettings:{capture_mode:'window',window:selector,priority:2,sli_compatibility:this.quake},overlay:true});
    if(this.windowId!=null)await this.obs.call('SetInputSettings',{inputName:'Klip Pencere',inputSettings:{window:selector,priority:2,method:2},overlay:true});
    this.pendingTarget=null;await this.visibility();this.target=selector;
    if(previous!=='game')this.onChange({method:'game',target:selector});
   }catch(error){this.target='';this.pendingTarget=selector;this.enabled.clear();await this.setEnabled(this.gameId,false).catch(()=>{});await this.setEnabled(this.windowId,false).catch(()=>{});throw error;}
  }
- setFocus(isGame){return this.enqueue(async()=>{if(this.focus!==isGame&&isGame){this.failedSince=this.now();this.resumeUntil=this.now()+2500;}this.focus=isGame;await this.visibility();});}
+ setFocus(isGame){return this.enqueue(async()=>{
+  const gained=isGame&&!this.focus;
+  this.focus=isGame;
+  if(!isGame)this.resumeFrameAfter=null;
+  if(gained){
+   const now=this.now();
+   this.failedSince=now;this.resumeUntil=now+2500;
+   if(this.quake&&this.wanted){
+    this.resumeFrameAfter=now;
+    this.gameResets=0;this.windowAttempts=0;this.windowRetryAt=now;
+    this.warnedUnavailable=false;
+    if(this.method==='window'){
+     // A new WGC session cannot report the dimensions of its previous frame.
+     await this.setEnabled(this.displayId,false);
+     await this.retryWindow();
+     return;
+    }
+   }
+  }
+  await this.visibility();
+ });}
  async ready(id){
-  if(id==null)return false;
+  if(id==null||this.enabled.get(id)===false)return false;
   const inputName=id===this.gameId?'Klip Oyun':'Klip Pencere';
+  const sampledAfter=this.now();
   const health=await this.obs.call('GetInputSourceHealth',{inputName});health.observedAt=this.now();this.health.set(id,health);
   if(!(health.sourceWidth>0&&health.sourceHeight>0)||health.suspended||health.hookStatusAvailable&&!health.hooked||health.freshnessRequired&&!health.transportObserved)return false;
+  if(id===this.gameId&&this.resumeFrameAfter!==null){
+   const age=health.lastFrameAgeMs;
+   if(!health.transportObserved||!Number.isFinite(age)||age<0||sampledAfter-age<=this.resumeFrameAfter)return false;
+  }
   // A producer advancing the transport proves new frames even in a static menu.
   // Stock OBS exposes no equivalent counter for shared textures or WGC. Those
   // transports report that limit explicitly; render ticks/pixel hashes are not evidence.
@@ -70,9 +97,10 @@ class VideoSources {
  async recreate(method){
   const key=method==='game'?'gameId':'windowId',old=this[key];
   await this.setEnabled(old,false);
+  this.health.delete(old);
   const result=await this.obs.call('RecreateInput',{sceneName:'Klip',inputName:method==='game'?'Klip Oyun':'Klip Pencere'});
   if(this.stopped)return;
-  this.enabled.delete(old);this.health.delete(old);this[key]=result.sceneItemId;
+  this.enabled.delete(old);this[key]=result.sceneItemId;
   if(this[key]==null)throw new Error('Yakalama kaynağı yeniden oluşturulamadı.');
   await this.geometry(this[key]);await this.visibility();
  }
@@ -84,6 +112,12 @@ class VideoSources {
   return false;
  }
  async prepareWindow(){
+  if(this.quake&&this.windowId!=null){
+   this.probing=true;
+   try{await this.recreate('window');}
+   catch(error){this.probing=false;throw error;}
+   return;
+  }
   await this.ensureInput('Klip Pencere','window_capture',{window:this.target,priority:2,method:2,cursor:this.config.cursor,client_area:true,capture_audio:false},false);
   const {sceneItems}=await this.obs.call('GetSceneItemList',{sceneName:'Klip'});
   this.windowId=sceneItems.find(i=>i.sourceName==='Klip Pencere')?.sceneItemId;
@@ -93,20 +127,29 @@ class VideoSources {
   await this.obs.call('SetSceneItemIndex',{sceneName:'Klip',sceneItemId:this.gameId,sceneItemIndex:2});
   this.probing=true;await this.visibility();
  }
+ warnQuakeUnavailable(){
+  if(!this.quake||!this.focus||this.warnedUnavailable||this.now()<this.windowRetryAt)return;
+  this.warnedUnavailable=true;
+  this.onWarning('Quake Live görüntüsü alınamıyor. Yakalama yeniden deneniyor.');
+ }
  check(){
   if(this.checking)return this.checking;
   const work=this.enqueue(async()=>{
    if(!this.wanted)return false;
    if(this.pendingTarget)await this.bindTarget(this.pendingTarget);
    if(this.method==='window'){
-    if(await this.ready(this.windowId))return !this.stopped;
+    if(await this.ready(this.windowId)){
+     this.resumeFrameAfter=null;this.warnedUnavailable=false;
+     return !this.stopped;
+    }
     if(this.stopped)return false;
     if(this.health.get(this.windowId)?.suspended||this.now()<this.resumeUntil)return false;
+    this.warnQuakeUnavailable();
     return this.retryWindow();
    }
    if(await this.ready(this.gameId)){
     if(this.stopped)return false;
-    this.failedSince=null;this.hadGameImage=true;
+    this.failedSince=null;this.hadGameImage=true;this.resumeFrameAfter=null;this.warnedUnavailable=false;
     if(this.probing){this.probing=false;await this.setEnabled(this.windowId,false);}
     return true;
    }
@@ -119,9 +162,15 @@ class VideoSources {
     try{await this.recreate('game');return false;}catch(error){this.onWarning('Oyun yakalama yeniden açılamadı: '+error.message);}
    }
    if(!this.probing){if(this.now()<this.windowRetryAt)return false;try{await this.prepareWindow();this.windowRetryAt=this.now()+2500;}catch(error){this.windowRetryAt=this.now()+Math.min(30000,2500*2**Math.min(this.windowAttempts++,4));this.onWarning('Windows pencere yakalama açılamadı: '+error.message);return false;}}
-   if(!await this.ready(this.windowId)){if(!this.stopped&&!this.health.get(this.windowId)?.suspended)await this.retryWindow();return false;}
+   if(!await this.ready(this.windowId)){
+    if(!this.stopped&&!this.health.get(this.windowId)?.suspended){
+     this.warnQuakeUnavailable();
+     await this.retryWindow();
+    }
+    return false;
+   }
    if(this.stopped)return false;
-   this.method='window';this.probing=false;await this.visibility();
+   this.method='window';this.probing=false;this.resumeFrameAfter=null;this.warnedUnavailable=false;await this.visibility();
    this.onChange({method:'window',target:this.target});return true;
   });
   this.checking=work;work.then(()=>{this.checking=null;},()=>{this.checking=null;});return work;

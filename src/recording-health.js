@@ -25,7 +25,7 @@ class RecordingHealth {
   const elapsed=now-Number(capture.started||now),warming=elapsed<5000&&!count;
   if(warming){result.state='warming';return result;}
   if(h.outputActive===false||!count||result.videoPacketAgeMs===null||result.videoPacketAgeMs>3000||sampleAge>3000||source?.transportObserved===true&&(result.sourceFrameAgeMs===null||result.sourceFrameAgeMs>3000||!(Number(source.frameSequence)>0))){result.state='stalled';return result;}
-  if(video?.probing||video?.pendingTarget||video?.wanted&&(!source||sourceSampleAge>3000||!(source.sourceWidth>0&&source.sourceHeight>0)||source.hookStatusAvailable&&!source.hooked)){result.state='renewing';return result;}
+  if(video?.probing||video?.pendingTarget||video?.wanted&&(video.resumeFrameAfter!=null||!source||sourceSampleAge>3000||!(source.sourceWidth>0&&source.sourceHeight>0)||source.hookStatusAvailable&&!source.hooked)){result.state='renewing';return result;}
   if(now<this.droppedUntil){result.state='dropped';return result;}
   result.state=verification==='delivery'?'healthy':'recording';return result;
  }

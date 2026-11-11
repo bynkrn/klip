@@ -186,8 +186,24 @@ public:
   if(type=="GetInputSourceHealth")return sourceHealth.query(input(data));
   if(type=="RecreateInput"){
    auto old=input(data);auto kind=value(obs_source_get_id(old));require(kind=="game_capture"||kind=="window_capture","Only game/window capture can be recreated");auto name=data.at("inputName").get<std::string>();auto owner=scene(data);auto oldItem=obs_scene_find_source(owner,name.c_str());require(oldItem!=nullptr,"Capture scene item is unavailable");
-   obs_transform_info transform{};obs_sceneitem_get_info2(oldItem,&transform);obs_sceneitem_crop crop{};obs_sceneitem_get_crop(oldItem,&crop);auto order=obs_sceneitem_get_order_position(oldItem);bool visible=obs_sceneitem_visible(oldItem);auto filter=obs_sceneitem_get_scale_filter(oldItem);obs_data_t *settings=obs_source_get_settings(old);
-   sourceHealth.reset(old);obs_sceneitem_remove(oldItem);obs_source_release(old);inputs.erase(name);auto source=obs_source_create(kind.c_str(),name.c_str(),settings,nullptr);obs_data_release(settings);require(source!=nullptr,"Cannot recreate capture source");auto added=obs_scene_add(owner,source);if(!added){obs_source_release(source);throw std::runtime_error("Cannot restore capture scene item");}inputs[name]=source;obs_sceneitem_set_info2(added,&transform);obs_sceneitem_set_crop(added,&crop);obs_sceneitem_set_scale_filter(added,filter);obs_sceneitem_set_order_position(added,order);obs_sceneitem_set_visible(added,visible);return{{"sceneItemId",obs_sceneitem_get_id(added)}};
+   obs_transform_info transform{};obs_sceneitem_get_info2(oldItem,&transform);
+   obs_sceneitem_crop crop{};obs_sceneitem_get_crop(oldItem,&crop);
+   auto order=obs_sceneitem_get_order_position(oldItem);bool visible=obs_sceneitem_visible(oldItem);auto filter=obs_sceneitem_get_scale_filter(oldItem);
+   auto settings=obs_source_get_settings(old);
+   auto source=obs_source_create(kind.c_str(),(name+" (replacement)").c_str(),settings,nullptr);
+   obs_data_release(settings);
+   require(source!=nullptr,"Cannot recreate capture source");
+   auto added=obs_scene_add(owner,source);
+   if(!added){obs_source_release(source);throw std::runtime_error("Cannot restore capture scene item");}
+   obs_sceneitem_set_visible(added,false);
+   obs_sceneitem_set_info2(added,&transform);obs_sceneitem_set_crop(added,&crop);obs_sceneitem_set_scale_filter(added,filter);
+   // Keep the old source addressable until the replacement has a scene item.
+   obs_source_set_name(old,(name+" (retired)").c_str());
+   obs_source_set_name(source,name.c_str());
+   sourceHealth.reset(old);obs_sceneitem_remove(oldItem);obs_source_release(old);
+   inputs[name]=source;
+   obs_sceneitem_set_order_position(added,order);obs_sceneitem_set_visible(added,visible);
+   return{{"sceneItemId",obs_sceneitem_get_id(added)}};
   }
   if(type=="SetInputSettings"){auto source=input(data);sourceHealth.reset(source);Data patch(data.at("inputSettings"));if(data.value("overlay",true)){obs_data_t *settings=obs_source_get_settings(source);obs_data_apply(settings,patch);obs_source_update(source,settings);obs_data_release(settings);}else obs_source_update(source,patch);return json::object();}
   if(type=="GetInputSettings"){auto source=input(data);auto settings=obs_source_get_settings(source);auto result=json::parse(obs_data_get_json(settings));obs_data_release(settings);return{{"inputSettings",result},{"inputKind",obs_source_get_id(source)}};}

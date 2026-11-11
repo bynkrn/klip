@@ -56,7 +56,8 @@
   ['Tampon kurtarma bekliyor.','The buffer is awaiting recovery.'],
   ['Önce bekleyen tamponu kurtar.','Recover the pending buffer first.'],
   ['Kurtarma klasörü hazır değil.','The recovery folder is not ready.'],
-  ['Klip doğrulanamadı','Clip verification failed.']
+  ['Klip doğrulanamadı','Clip verification failed.'],
+  ['Quake Live görüntüsü alınamıyor. Yakalama yeniden deneniyor.','Quake Live video is unavailable. Ember is retrying capture.']
  );
  const catalog=new Map(rows.map(([tr,en])=>[normalize(tr),{tr,en}]));
  function translate(text,language='tr'){

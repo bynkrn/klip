@@ -6,6 +6,7 @@ test('health distinguishes inactive, recovery, warming and a stale encoded video
 });
 test('real transport delivery is distinguished from lifecycle-only window capture and static menus',()=>{
  const h=model(),c=capture();c.video={wanted:true,method:'game',gameId:1,health:new Map([[1,{transportObserved:true,frameSequence:'300',lastFrameAgeMs:20,sourceWidth:800,sourceHeight:600,hooked:true,hookStatusAvailable:true}]])};assert.equal(h.read(c,2000).state,'healthy');assert.equal(h.read(c,2000).verification,'delivery');
+ c.video.resumeFrameAfter=2000;assert.equal(h.read(c,2000).state,'renewing');c.video.resumeFrameAfter=null;
  c.video.health.get(1).lastFrameAgeMs=4000;assert.equal(h.read(c,6000).state,'stalled');c.health={...c.health};c.video.method='window';c.video.windowId=2;c.video.health.set(2,{sourceWidth:800,sourceHeight:600,freshnessCapability:'hook-lifecycle-only'});assert.equal(h.read(c,6000).state,'recording');assert.equal(h.read(c,6000).verification,'limited');
  c.video.health.get(2).suspended=true;assert.equal(h.read(c,6000).state,'suspended');
 });
