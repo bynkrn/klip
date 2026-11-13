@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.IO.Compression;
 using System.Reflection;
@@ -110,31 +111,114 @@ class UpdateInstaller {
   }finally{if(launched!=null)launched.Dispose();Current=null;}
  }
  sealed class ProgressMeter:Control {
-  public double? Value;
-  public ProgressMeter(){DoubleBuffered=true;Height=9;}
-  protected override void OnPaint(PaintEventArgs e){base.OnPaint(e);using(var back=new SolidBrush(Color.FromArgb(65,42,49)))e.Graphics.FillRectangle(back,ClientRectangle);if(Value.HasValue)using(var fill=new SolidBrush(Color.FromArgb(242,157,113)))e.Graphics.FillRectangle(fill,0,0,(int)(Width*Math.Max(0,Math.Min(1,Value.Value))),Height);}
+  readonly Stopwatch animation=Stopwatch.StartNew();
+  readonly System.Windows.Forms.Timer timer;
+  double? progress;
+  public ProgressMeter(){
+   DoubleBuffered=true;
+   timer=new System.Windows.Forms.Timer{Interval=30};
+   timer.Tick+=delegate{Invalidate();};
+   VisibleChanged+=delegate{timer.Enabled=Visible&&!progress.HasValue;};
+  }
+  public void SetProgress(double? value){
+   progress=value;
+   timer.Enabled=Visible&&!value.HasValue;
+   Invalidate();
+  }
+  protected override void OnPaint(PaintEventArgs e){
+   base.OnPaint(e);
+   e.Graphics.SmoothingMode=SmoothingMode.AntiAlias;
+   float radius=Height/2f,y=radius;
+   using(var track=new Pen(Color.FromArgb(67,53,59),Height-1)){
+    track.StartCap=track.EndCap=LineCap.Round;
+    e.Graphics.DrawLine(track,radius,y,Width-radius,y);
+   }
+   float length=Width-2*radius;
+   float start=0,end;
+   if(progress.HasValue){
+    end=length*(float)Math.Max(0,Math.Min(1,progress.Value));
+   }else{
+    float segment=length*.25f;
+    float sweep=(float)(.5-.5*Math.Cos(2*Math.PI*animation.Elapsed.TotalSeconds/1.8));
+    start=(length-segment)*sweep;
+    end=start+segment;
+   }
+   if(end>start)using(var fill=new Pen(Color.FromArgb(255,173,71),Height-1)){
+    fill.StartCap=fill.EndCap=LineCap.Round;
+    e.Graphics.DrawLine(fill,radius+start,y,radius+end,y);
+   }
+  }
+  protected override void Dispose(bool disposing){if(disposing)timer.Dispose();base.Dispose(disposing);}
  }
  sealed class ProgressWindow:Form {
   [DllImport("user32.dll")]static extern bool ShowWindow(IntPtr window,int command);
-  readonly bool english; readonly Label heading,phase,percent; readonly TextBox details; readonly ProgressMeter meter; readonly Button close,open; bool terminal; Action reopen; System.Windows.Forms.Timer finishedTimer;
+  [DllImport("user32.dll")]static extern bool ReleaseCapture();
+  [DllImport("user32.dll")]static extern IntPtr SendMessage(IntPtr window,int message,IntPtr wParam,IntPtr lParam);
+  const int WmNcLeftButtonDown=0xA1;
+  const int HitCaption=2;
+  static readonly Color Background=Color.FromArgb(25,23,29);
+  static readonly Color Foreground=Color.FromArgb(250,237,230);
+  static readonly Color Muted=Color.FromArgb(191,175,188);
+  readonly bool english; readonly Label heading,phase,percent,versionLabel; readonly TextBox details; readonly ProgressMeter meter; readonly Button close,open; bool terminal; Action reopen; System.Windows.Forms.Timer finishedTimer;
+  readonly Bitmap logo;
   string TextFor(string tr,string en){return english?en:tr;}
   public ProgressWindow(Job job){
-   english=job!=null&&job.language!=null&&job.language.StartsWith("en",StringComparison.OrdinalIgnoreCase);Text=TextFor("Ember Güncellemesi","Ember Update")+(job!=null&&!String.IsNullOrWhiteSpace(job.version)?" · "+job.version:"");ClientSize=new Size(620,395);BackColor=Color.FromArgb(29,22,30);ForeColor=Color.FromArgb(250,231,219);Font=new Font("Segoe UI",10);FormBorderStyle=FormBorderStyle.FixedDialog;MaximizeBox=false;MinimizeBox=true;StartPosition=FormStartPosition.CenterScreen;
+   english=job!=null&&job.language!=null&&job.language.StartsWith("en",StringComparison.OrdinalIgnoreCase);
+   var version=job==null?"":job.version;
+   Text=TextFor("Ember Güncellemesi","Ember Update")+(String.IsNullOrWhiteSpace(version)?"":" · "+version);
+   FormBorderStyle=FormBorderStyle.None;
+   AutoScaleDimensions=new SizeF(96,96);
+   AutoScaleMode=AutoScaleMode.Dpi;
+   ClientSize=new Size(300,300);
+   BackColor=Background;
+   ForeColor=Foreground;
+   Font=new Font("Segoe UI",9);
+   StartPosition=FormStartPosition.CenterScreen;
    try{Icon=Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location);}catch{}
-   heading=new Label{Text=TextFor("Ember güncelleniyor","Updating Ember"),Location=new Point(30,28),Size=new Size(555,42),Font=new Font("Segoe UI Semibold",21)};
-   phase=new Label{Text=TextFor("Güncelleme hazırlanıyor…","Preparing the update…"),Location=new Point(32,91),Size=new Size(550,32),Font=new Font("Segoe UI",12)};
-   meter=new ProgressMeter{Location=new Point(33,142),Size=new Size(550,9)};
-   percent=new Label{Location=new Point(33,163),Size=new Size(550,24),ForeColor=Color.FromArgb(221,171,147)};
-   details=new TextBox{Multiline=true,ReadOnly=true,BorderStyle=BorderStyle.None,ScrollBars=ScrollBars.None,WordWrap=true,BackColor=Color.FromArgb(29,22,30),Text=TextFor("Uygulama ve tampon hazır olunca Ember açılacak. Bu pencereyi açık bırakın.","Ember will open when the app and recording buffer are ready. Keep this window open."),Location=new Point(33,204),Size=new Size(550,109),ForeColor=Color.FromArgb(219,198,192)};
-   close=MakeButton(TextFor("Kapat","Close"),465);close.Enabled=false;close.Visible=false;close.Click+=delegate{Close();};open=MakeButton(TextFor("Ember'ı aç","Open Ember"),311);open.Enabled=false;open.Visible=false;open.Click+=delegate{if(reopen!=null){Action action=reopen;reopen=null;open.Enabled=false;action();}};
-   Controls.AddRange(new Control[]{heading,phase,meter,percent,details,close,open});
+   using(var asset=Assembly.GetExecutingAssembly().GetManifestResourceStream("Ember.Logo.png"))
+   using(var image=Image.FromStream(asset)){logo=new Bitmap(image);}
+   var brand=new PictureBox{Image=logo,SizeMode=PictureBoxSizeMode.Zoom,Location=new Point(102,39),Size=new Size(96,96),AccessibleName="Ember"};
+   heading=MakeLabel(TextFor("Ember güncelleniyor","Updating Ember"),145,33,new Font("Segoe UI Semibold",15),Foreground);
+   phase=MakeLabel(TextFor("Güncelleme hazırlanıyor…","Preparing the update…"),182,34,Font,Muted);
+   meter=new ProgressMeter{Location=new Point(62,222),Size=new Size(176,5)};
+   percent=MakeLabel("",233,24,Font,Foreground);
+   versionLabel=MakeLabel(String.IsNullOrWhiteSpace(version)?"":"v"+version,264,21,Font,Muted);
+   details=new TextBox{Multiline=true,ReadOnly=true,BorderStyle=BorderStyle.None,ScrollBars=ScrollBars.None,WordWrap=true,BackColor=Background,Location=new Point(22,211),Size=new Size(256,50),ForeColor=Muted,Visible=false,TabIndex=2};
+   close=MakeButton(TextFor("Kapat","Close"),162);close.Click+=delegate{Close();};
+   open=MakeButton(TextFor("Ember’ı Aç","Open Ember"),28);
+   close.TabIndex=0;
+   open.TabIndex=1;
+   open.Click+=delegate{if(reopen!=null){Action action=reopen;reopen=null;open.Enabled=false;action();}};
+   Controls.AddRange(new Control[]{brand,heading,phase,meter,percent,versionLabel,details,close,open});
+   foreach(var control in new Control[]{this,brand,heading,phase,versionLabel})control.MouseDown+=Drag;
    // A legacy launcher uses SW_HIDE. Its startup flag consumes the first ShowWindow;
    // queue a second native show after WinForms creates the window so progress is visible.
    Shown+=delegate{BeginInvoke(new Action(delegate{if(!IsDisposed){ShowWindow(Handle,5);Activate();}}));};
    FormClosing+=delegate(object sender,FormClosingEventArgs e){if(!terminal)e.Cancel=true;};
   }
-  Button MakeButton(string text,int x){return new Button{Text=text,Location=new Point(x,331),Size=new Size(120,35),FlatStyle=FlatStyle.Flat,BackColor=Color.FromArgb(66,42,46),ForeColor=Color.FromArgb(250,225,210)};}
-  public void Publish(State state,bool done,Action action){if(IsDisposed)return;if(InvokeRequired){try{BeginInvoke(new Action(delegate{Publish(state,done,action);}));}catch(InvalidOperationException){}return;}terminal=done;reopen=action;meter.Value=state.progress;meter.Invalidate();percent.Text=state.progress.HasValue?Math.Round(state.progress.Value*100)+"%"+(state.totalBytes.HasValue?"  ·  "+FormatBytes(state.doneBytes.Value)+" / "+FormatBytes(state.totalBytes.Value):""):"";
+  Label MakeLabel(string text,int y,int height,Font font,Color color){
+   return new Label{Text=text,Location=new Point(18,y),Size=new Size(264,height),TextAlign=ContentAlignment.MiddleCenter,Font=font,ForeColor=color};
+  }
+  Button MakeButton(string text,int x){
+   return new Button{Text=text,Location=new Point(x,261),Size=new Size(110,27),FlatStyle=FlatStyle.Flat,BackColor=Color.FromArgb(58,43,50),ForeColor=Foreground,Enabled=false,Visible=false};
+  }
+  void Drag(object sender,MouseEventArgs e){
+   if(e.Button!=MouseButtons.Left)return;
+   ReleaseCapture();
+   SendMessage(Handle,WmNcLeftButtonDown,new IntPtr(HitCaption),IntPtr.Zero);
+  }
+  protected override void OnPaint(PaintEventArgs e){
+   base.OnPaint(e);
+   using(var border=new Pen(Color.FromArgb(59,45,54)))e.Graphics.DrawRectangle(border,0,0,ClientSize.Width-1,ClientSize.Height-1);
+  }
+  public void Publish(State state,bool done,Action action){
+   if(IsDisposed)return;
+   if(InvokeRequired){try{BeginInvoke(new Action(delegate{Publish(state,done,action);}));}catch(InvalidOperationException){}return;}
+   bool firstResult=done&&!terminal;
+   terminal=done;
+   reopen=action;
+   meter.SetProgress(state.progress);
+   percent.Text=state.progress.HasValue?Math.Round(state.progress.Value*100)+"%"+(state.doneBytes.HasValue&&state.totalBytes.HasValue?"  ·  "+FormatBytes(state.doneBytes.Value)+" / "+FormatBytes(state.totalBytes.Value):""):"";
    switch(state.phase){
     case "validating":phase.Text=TextFor("Güncelleme denetleniyor…","Checking the update…");break;
     case "verifying":phase.Text=TextFor("Paket doğrulanıyor…","Verifying the package…");break;
@@ -145,15 +229,40 @@ class UpdateInstaller {
     case "starting-buffer":phase.Text=TextFor("Tampon başlatılıyor…","Starting the recording buffer…");break;
     case "rolling-back":phase.Text=TextFor("Önceki sürüm geri yükleniyor…","Restoring the previous version…");break;
    }
-   if(done){close.Enabled=true;close.Visible=true;open.Enabled=action!=null;open.Visible=action!=null;if(state.status=="installed"){
-     bool bufferWarning=state.bufferRunning==false,reportWarning=!String.IsNullOrEmpty(state.error),warning=bufferWarning||reportWarning;heading.Text=warning?TextFor("Ember güncellendi — uyarı","Ember updated — warning"):TextFor("Ember güncellendi","Ember updated");phase.Text=bufferWarning?TextFor("Tampon başlatılamadı.","The recording buffer could not start."):reportWarning?TextFor("Güncelleme sonucu kaydedilemedi.","The update result could not be saved."):TextFor("Ember hazır.","Ember is ready.");details.Text=reportWarning?state.error:bufferWarning?(state.bufferError??TextFor("Ember'da kayıt ayarlarını denetleyin.","Check the recording settings in Ember.")):TextFor("Güncelleme tamamlandı. Ember açılıyor.","The update is complete. Ember is opening.");
-     if(!warning){finishedTimer=new System.Windows.Forms.Timer{Interval=1200};finishedTimer.Tick+=delegate{finishedTimer.Stop();Close();};finishedTimer.Start();}
-    }else{heading.Text=TextFor("Güncelleme tamamlanamadı","The update could not finish");phase.Text=state.status=="rolled-back"?TextFor("Önceki sürüm geri yüklendi.","The previous version was restored."):state.status=="recovery-required"?TextFor("Kurtarma gerekiyor. Yedek korundu.","Recovery is required. The backup was retained."):TextFor("Mevcut sürüm korundu.","The existing version was kept.");details.Text=(state.error??"")+Environment.NewLine+Environment.NewLine+(state.logPath==null?"":TextFor("Günlük: ","Log: ")+state.logPath);percent.Text="";}
+   if(!done)return;
+   if(state.status=="installed"){
+    bool bufferWarning=state.bufferRunning==false;
+    bool reportWarning=!String.IsNullOrEmpty(state.error);
+    heading.Text=TextFor("Ember güncellendi","Ember updated");
+    if(!bufferWarning&&!reportWarning){
+     phase.Text=TextFor("Ember hazır.","Ember is ready.");
+     finishedTimer=new System.Windows.Forms.Timer{Interval=1200};
+     finishedTimer.Tick+=delegate{finishedTimer.Stop();Close();};
+     finishedTimer.Start();
+     return;
+    }
+    phase.Text=bufferWarning?TextFor("Tampon başlatılamadı.","The recording buffer could not start."):TextFor("Güncelleme sonucu kaydedilemedi.","The update result could not be saved.");
+    details.Text=reportWarning?state.error:state.bufferError??TextFor("Ember’da kayıt ayarlarını denetleyin.","Check the recording settings in Ember.");
+   }else{
+    heading.Text=TextFor("Güncelleme başarısız","Update failed");
+    phase.Text=state.status=="rolled-back"?TextFor("Önceki sürüm geri yüklendi.","The previous version was restored."):state.status=="recovery-required"?TextFor("Kurtarma gerekiyor. Yedek korundu.","Recovery is required. The backup was retained."):TextFor("Mevcut sürüm korundu.","The existing version was kept.");
+    details.Text=(state.error??"")+Environment.NewLine+Environment.NewLine+(state.logPath==null?"":TextFor("Günlük: ","Log: ")+state.logPath);
    }
-   details.ScrollBars=TextRenderer.MeasureText(details.Text,details.Font,new Size(details.Width-4,Int32.MaxValue),TextFormatFlags.WordBreak|TextFormatFlags.TextBoxControl).Height>details.Height-4?ScrollBars.Vertical:ScrollBars.None;
+   meter.Visible=percent.Visible=versionLabel.Visible=false;
+   close.Enabled=close.Visible=true;
+   open.Enabled=open.Visible=action!=null;
+   close.Left=action==null?(ClientSize.Width-close.Width)/2:ClientSize.Width-open.Left-close.Width;
+   CancelButton=close;
+   // Make room for diagnostics at the current DPI while leaving the actions fixed.
+   int inset=heading.Height/2;
+   if(firstResult){heading.Top-=inset;phase.Top-=inset;}
+   details.Top=phase.Bottom;
+   details.Height=close.Top-details.Top-inset/2;
+   details.Visible=true;
+   details.ScrollBars=TextRenderer.MeasureText(details.Text,details.Font,new Size(details.Width-4,Int32.MaxValue),TextFormatFlags.WordBreak|TextFormatFlags.TextBoxControl).Height>details.Height?ScrollBars.Vertical:ScrollBars.None;
   }
   static string FormatBytes(long bytes){return (bytes/1048576d).ToString("0.0")+" MB";}
-  protected override void Dispose(bool disposing){if(disposing&&finishedTimer!=null)finishedTimer.Dispose();base.Dispose(disposing);}
+  protected override void Dispose(bool disposing){if(disposing){if(finishedTimer!=null)finishedTimer.Dispose();if(logo!=null)logo.Dispose();}base.Dispose(disposing);}
  }
  [STAThread]static int Main(string[] args){
   // Windows inherits the caller's directory handle. Release it before any tree rename.
