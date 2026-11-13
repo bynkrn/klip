@@ -59,6 +59,48 @@
   ['Klip doğrulanamadı','Clip verification failed.'],
   ['Quake Live görüntüsü alınamıyor. Yakalama yeniden deneniyor.','Quake Live video is unavailable. Ember is retrying capture.']
  );
+ rows.push(
+  ['Yeniden Başlat','Restart'],
+  ['Tamponu Sil ve Yeniden Başlat','Discard Buffer And Restart'],
+  ['Yeniden başlatırsan bu tampon silinir. Ember’ı açık tutup diskte yer açtıktan sonra Kurtar’a basabilirsin.','Restarting discards this buffer. Keep Ember open, free disk space, then choose Recover.'],
+  ['Devam eden işlem tamamlanınca Ember yeniden başlatılacak…','Ember will restart when the current operation finishes…'],
+  ['Güncelleme devam ediyor. Bitince yeniden başlatabilirsin.','An update is in progress. You can restart after it finishes.'],
+  ['Video Dosyaları','Video Files'],
+  ['Ses Dosyaları','Audio Files'],
+  ['Klip İşlemleri','Clip Actions'],
+  ['Geçersiz klip.','Invalid clip.'],
+  ['Geçersiz kesim aralığı.','Invalid trim range.'],
+  ['Video akışı okunamadı.','The video stream could not be read.'],
+  ['Anahtar kare dizini okunamadı. Hassas modunu kullan.','The keyframe index could not be read. Use Precise mode.'],
+  ['Anahtar kare dizini güvenilir değil. Hassas modunu kullan.','The keyframe index is unreliable. Use Precise mode.'],
+  ['Başlangıç için anahtar kare bulunamadı. Hassas modunu kullan.','No keyframe was found for the start of the trim. Use Precise mode.'],
+  ['Geçerli hızlı kesim aralığı bulunamadı. Hassas modunu kullan.','No valid range was found for a fast trim. Use Precise mode.'],
+  ['Bu anahtar kare aralığında dışarıdaki karelere bağımlılık var. Hassas modunu kullan.','This range depends on frames outside it. Use Precise mode.'],
+  ['Klip değişti; aralığı yeniden hazırla.','The clip has changed. Prepare the range again.'],
+  ['Geçersiz çıktı adı.','Invalid output file name.'],
+  ['Geçersiz çıktı klasörü.','Invalid output folder.'],
+  ['Çıktı klasörü kitaplığın dışında.','The output folder is outside the clip library.'],
+  ['Çıktı doğrulanamadı.','The exported clip could not be verified.'],
+  ['Özgün video akışı korunamadı.','The original video stream could not be kept.'],
+  ['Çıktı kare sayısı doğrulanamadı.','The exported frame count could not be verified.'],
+  ['Çıktı en boy oranı değişti.','The exported aspect ratio changed.'],
+  ['Çıktı kesim aralığı doğrulanamadı.','The exported trim range could not be verified.'],
+  ['Çıktı süresi okunamadı.','The exported duration could not be read.'],
+  ['Benzersiz çıktı adı oluşturulamadı.','A unique output file name could not be created.'],
+  ['Klip veya kesim aralığı değişti; aralığı yeniden hazırla.','The clip or trim range has changed. Prepare the range again.'],
+  ['Klip dışa aktarma sırasında değişti; yeniden dene.','The clip changed during export. Try again.'],
+  ['Kaynak klibin video/ses akışları doğrulanamadı.','The source video and audio streams could not be verified.'],
+  ['Klip akış sayısı, boyutu veya süresi kaynakla eşleşmiyor.','The clip’s stream count, dimensions, or duration differ from the source.'],
+  ['GitHub bağlantısı kullanılamıyor.','The GitHub connection is unavailable.'],
+  ['Geçersiz GitHub istek adresi.','Invalid GitHub request URL.'],
+  ['Geçersiz GitHub depo adresi.','Invalid GitHub repository URL.'],
+  ['Güncelleme yalnız güvenilir GitHub HTTPS adreslerinden indirilebilir.','The update must be downloaded from a trusted GitHub HTTPS URL.'],
+  ['GitHub bağlantısı kurulamadı.','Could not connect to GitHub.'],
+  ['GitHub yönlendirme sınırı aşıldı.','The GitHub redirect limit was exceeded.'],
+  ['Geçersiz GitHub yönlendirme adresi.','Invalid GitHub redirect URL.'],
+  ['GitHub yanıtı boş.','GitHub returned an empty response.'],
+  ['Güncelleme deposuna erişim doğrulanamadı.','Access to the update repository could not be verified.']
+ );
  const catalog=new Map(rows.map(([tr,en])=>[normalize(tr),{tr,en}]));
  function translate(text,language='tr'){
   if(typeof text!=='string'||!text.trim())return text;const lang=language==='en'?'en':'tr',trimmed=text.trim(),known=catalog.get(normalize(trimmed));let result;
@@ -67,6 +109,7 @@
  }
  function dynamic(text,lang){
   const key=normalize(text),english=lang==='en',count=(n,word)=>n+' '+word+(Number(n)===1?'':'s');let match;
+  if((match=/^Bu video kodlaması \(([^()]+)\) MP4 içine özgün video olarak aktarılamıyor\. Kesim için Hassas modunu kullan veya kaynağı H\.264, HEVC ya da AV1 olarak dönüştür\.$/u.exec(text)))return english?'MP4 does not support copying this video codec ('+match[1]+'). Use Precise mode or convert the source to H.264, HEVC, or AV1.':text;
   if((match=/^(\d+) (seçili|klip|ses izi|ses|iz)$/u.exec(key)))return english?match[1]+' '+({'seçili':'selected','klip':Number(match[1])===1?'clip':'clips','ses izi':Number(match[1])===1?'audio track':'audio tracks','ses':'audio','iz':Number(match[1])===1?'track':'tracks'}[match[2]]):text;
   if((match=/^(son )?(\d+) (saniye|dakika)$/u.exec(key)))return english?(match[1]?'Last ':'')+count(match[2],match[3]==='saniye'?'Second':'Minute'):(match[1]?'Son ':'')+match[2]+' '+(match[3]==='saniye'?'Saniye':'Dakika');
   if((match=/^(\d+) dakika (\d+) saniye$/u.exec(key)))return english?count(match[1],'Minute')+' '+count(match[2],'Second'):match[1]+' Dakika '+match[2]+' Saniye';
@@ -82,6 +125,7 @@
   const warningPrefix=' Yenileme uyarısı: ',warning=text.indexOf(warningPrefix);if(warning>=0)return translate(text.slice(0,warning),lang)+(english?' Refresh warning: ':warningPrefix)+translate(text.slice(warning+warningPrefix.length),lang);
   const prefixes=[['Güncelleme tamamlandı; tampon başlatılamadı: ','Update completed; the replay buffer could not start: '],['Tampon yeniden başlatılamadı: ','The replay buffer could not restart: '],['Dosya okunamadı: ','Could not read file: '],['Klipler silinemedi: ','Clips could not be deleted: '],['Klipler geri yüklenemedi: ','Clips could not be restored: '],['Çöp Kutusu yüklenemedi: ','Could not load Recycle Bin: '],['Ses önizlemesi açılamadı: ','Could not open audio preview: '],['Güncelleme dosyası eksik: ','Missing update file: '],['Windows Çöp Kutusu işlemi tamamlanamadı: ','Windows Recycle Bin operation failed: '],['Windows pencere yakalama açılamadı: ','Windows window capture could not be opened: '],['Etkin pencere izlenemiyor: ','The active window could not be tracked: '],['GitHub isteği tamamlanamadı. ','GitHub request failed. '],['Son denetleme: ','Last checked: '],['Konum: ','Location: '],['Silinme: ','Deleted: '],['Klip al · ','Save Clip · ']];
   prefixes.push(
+   ['Ember yeniden başlatılamadı: ','Could not restart Ember. '],
    ['Otomatik klip tamamlanamadı; orijinal kayıt kurtarma için korundu: ','The clip could not be saved automatically. The original recording was kept for recovery. '],
    ['Klip kaydedildi; kurtarma günlüğü temizlenemedi: ','Clip saved. The recovery journal could not be cleaned up. '],
    ['Klip kaydedildi; kurtarma onayı alınamadığı için orijinal kayıt ve sesler korundu: ','Clip saved. The original video and audio were kept because recovery could not be confirmed. '],

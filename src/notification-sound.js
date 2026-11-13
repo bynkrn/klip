@@ -22,7 +22,7 @@ class NotificationSound{
   if(next.notificationSound==='custom'&&!await this.resolve(next.notificationCustomFile).catch(()=>null))next.notificationSound='ember';return next;
  }
  async validate(settings){
-  if(!Number.isInteger(settings.notificationVolume)||settings.notificationVolume<0||settings.notificationVolume>100||!['ember','soft','glass','arcade','custom'].includes(settings.notificationSound))throw new Error('Geçersiz bildirim sesi ayarı.');
+  if(!Number.isInteger(settings.notificationVolume)||settings.notificationVolume<0||settings.notificationVolume>100||!['ember','soft','glass','arcade','medal','custom'].includes(settings.notificationSound))throw new Error('Geçersiz bildirim sesi ayarı.');
   if(settings.notificationSound==='custom'&&!await this.resolve(settings.notificationCustomFile).catch(()=>null))throw new Error('Önce özel ses dosyası seç.');
  }
  async importFile(file){

@@ -8,7 +8,7 @@
   const time=value=>{const milliseconds=Math.round(value*1000),seconds=Math.floor(milliseconds/1000);return String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0')+'.'+String(milliseconds%1000).padStart(3,'0');};
   function render(){
    title.textContent=en()?'Export Method':'Dışa Aktarma Yöntemi';mode.options[0].textContent=en()?'Fast · Original Video':'Hızlı · Özgün Görüntü';mode.options[1].textContent=en()?'Precise · Frame Accurate':'Hassas · Kareye Göre Kes';mode.setAttribute('aria-label',title.textContent);mode.disabled=working;name.disabled=working;cancel.disabled=working;for(const input of root.querySelectorAll('#sk-export-audio-controls input'))input.disabled=working;confirm.disabled=working||!plan;confirm.setAttribute('aria-busy',String(working||!!request&&!plan&&!error));
-   if(error){status.textContent=error;status.style.color='var(--sk-amber,#ffb631)';return;}status.style.color='var(--sk-muted,#b6acbd)';
+   if(error){status.textContent=global.KlipI18n?.translate(error,getLanguage())||error;status.style.color='var(--sk-amber,#ffb631)';return;}status.style.color='var(--sk-muted,#b6acbd)';
    if(!plan){status.textContent=en()?'Preparing the export range…':'Kaydedilecek aralık hazırlanıyor…';return;}
    $('sk-export-range').textContent=time(plan.range.start)+' – '+time(plan.range.end)+' · '+plan.range.duration.toFixed(3)+(en()?' s':' sn');
    const notes=[];if(plan.videoCopied)notes.push(en()?'Video is copied without re-encoding.':'Görüntü yeniden kodlanmaz.');else notes.push(en()?'Frame-accurate cut with high quality video encoding.':'Kare hassasiyetinde kesim, yüksek kalitede yeniden kodlama kullanır.');
@@ -22,7 +22,7 @@
    if(token===generation)render();
   }
   mode.addEventListener('change',preparePlan);dialog.addEventListener('cancel',event=>{if(working)event.preventDefault();});dialog.addEventListener('close',()=>{generation++;plan=null;request=null;});
-  return{render,prepare(clip,range){request={id:clip.id,start:range.start,end:range.end,...Number.isFinite(clip.mtime)&&Number.isFinite(clip.size)?{sourceVersion:{mtime:clip.mtime,size:clip.size}}:{}};working=false;preparePlan();},selection(){if(!request||!plan||working)throw Error(en()?'Wait for the export range to be ready.':'Kaydedilecek aralığın hazırlanmasını bekle.');return{...request,mode:mode.value,planToken:plan.token};},setWorking(value){working=value;render();}};
+  return{render,prepare(clip,range){request={id:clip.id,start:range.start,end:range.end,...Number.isFinite(clip.mtime)&&Number.isFinite(clip.size)?{sourceVersion:{mtime:clip.mtime,size:clip.size}}:{}};working=false;preparePlan();},selection(){if(!request||!plan||working)throw Error(en()?'Wait for the export range to be ready.':'Kaydedilecek aralığın hazırlanmasını bekle.');return{...request,mode:mode.value,planToken:plan.token};},setWorking(value){working=value;if(value)error='';render();},showError(message){error=message;render();}};
  }
  global.EmberExportUI={attach};
 })(window);
