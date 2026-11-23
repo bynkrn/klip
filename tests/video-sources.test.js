@@ -9,6 +9,12 @@ function fixture(mode='game'){
  return{state,video,initialize,fallback};
 }
 const quakeTarget='Quake Live:Quake Live:quakelive_steam.exe';
+test('selecting or switching a Steam game explicitly keeps overlay capture disabled without changing window fallback',async()=>{
+ const {state,video,initialize,fallback}=fixture('auto');await initialize('Team Fortress 2:Valve001:tf_win64.exe');await video.setFocus(true);await fallback();await video.setTarget(quakeTarget);await video.setTarget('Team Fortress 2:Valve001:tf.exe');
+ const bindings=state.calls.filter(call=>call.type==='SetInputSettings'&&call.inputName==='Klip Oyun');assert.equal(bindings.length,3);for(const call of bindings)assert.equal(call.inputSettings.capture_overlays,false);
+ for(const call of state.calls.filter(call=>call.type==='SetInputSettings'&&call.inputName==='Klip Pencere'))assert(!('capture_overlays' in call.inputSettings));
+ assert(!state.calls.some(call=>/ReplayBuffer|VideoSettings|Encoder/.test(call.type)));
+});
 test('Quake refocus waits for a game frame delivered after returning',async()=>{
  const {state,video,initialize}=fixture('auto');
  await initialize(quakeTarget);

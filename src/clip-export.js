@@ -101,7 +101,7 @@ async function exportClip(options,deps){
  const prepared=await prepare(options,deps),{plan,video,source}=prepared;
  if(planToken!==undefined&&(typeof planToken!=='string'||planToken!==plan.token))throw new Error('Klip veya kesim aralığı değişti; aralığı yeniden hazırla.');
  const sourceAudio=prepared.media.streams.filter(s=>s.codec_type==='audio'),effectiveClip={...clip,tracks:sourceAudio.length,audio:sourceAudio.map((stream,index)=>({index,name:clip.audio?.find(row=>row.index===index)?.name||stream.tags?.title||stream.tags?.handler_name||'Ses '+(index+1),codec:stream.codec_name}))};
- const audio=audioOutput(effectiveClip,tracks,volumes,{alignTimeline:true}),selected=audioSelection(effectiveClip,tracks),directory=await outputDirectory(folder,clip.game),temp=path.join(directory,'.'+crypto.randomUUID()+'.mp4');
+ const independent=prepared.media.format?.tags?.ember_audio_layout==='separate',audio=audioOutput(effectiveClip,tracks,volumes,{alignTimeline:true,independent}),selected=audioSelection(effectiveClip,tracks),directory=await outputDirectory(folder,clip.game),temp=path.join(directory,'.'+crypto.randomUUID()+'.mp4');
  try{
   const args=['-v','error','-n'];
   if(plan.range.start>0)args.push('-ss',String(plan.range.start));
@@ -111,12 +111,13 @@ async function exportClip(options,deps){
   if(plan.videoCopied){args.push('-c:v','copy');if(prepared.packetCount!==null)args.push('-frames:v',String(prepared.packetCount));}
   else args.push(...(deps.videoEncoderArgs||defaultEncoder(video)),'-fps_mode','passthrough');
   if(audio.names.length){args.push('-c:a','aac','-b:a','256k');audio.names.forEach((title,index)=>{
-   const originalIndex=selected.length===1?selected[0]:selected[index-1];
+   const originalIndex=independent?selected[index]:selected.length===1?selected[0]:selected[index-1];
    if(originalIndex!==undefined)args.push('-map_metadata:s:a:'+index,'0:s:a:'+originalIndex);
-   args.push('-metadata:s:a:'+index,'title='+title,'-metadata:s:a:'+index,'handler_name='+title,'-disposition:a:'+index,index===0?'default':'0');
+   args.push('-metadata:s:a:'+index,'title='+title,'-metadata:s:a:'+index,'handler_name='+title,'-disposition:a:'+index,independent||index===0?'default':'0');
   });}
   else args.push('-an');
-  args.push('-sn','-dn','-movflags','+faststart','-f','mp4',temp);
+  if(independent)args.push('-metadata','ember_audio_layout=separate');
+  args.push('-sn','-dn','-movflags',independent?'+faststart+use_metadata_tags':'+faststart','-f','mp4',temp);
   await deps.run('ffmpeg',args);const media=await deps.probe(temp);verifyOutput(media,prepared,audio.names.length);
   if(sourceKey(clip.file,await sourceStat(clip.file))!==source)throw new Error('Klip dışa aktarma sırasında değişti; yeniden dene.');
   const file=await publish(temp,directory,filename,clip.file);if(media.format)media.format.filename=file;return{file,media,range:plan.range,videoCopied:plan.videoCopied};

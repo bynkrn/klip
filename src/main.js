@@ -6,6 +6,7 @@ const {trashClips}=require('./library-actions');
 const {WindowsTrash}=require('./windows-trash');
 const {TrashMedia}=require('./trash-media');
 const {EditorAudio}=require('./audio-editor');
+const {PlaybackMedia,needsAudioPreview}=require('./playback-media');
 const {RecordingHealth}=require('./recording-health');
 const {planClipExport,exportClip}=require('./clip-export');
 const {EditorAudioPreferences}=require('./editor-audio-preferences');
@@ -47,6 +48,7 @@ const notificationSounds=new NotificationSound({directory:path.join(app.getPath(
 const recycle=new WindowsTrash({historyFile:path.join(app.getPath('userData'),'trash-history.json'),root:()=>state.folder,helper:path.join(toolDir,'recycle-bin.exe')});
 const trashMedia=new TrashMedia({trash:recycle,cacheDir:path.join(app.getPath('userData'),'previews'),run,probe,asset,revoke:url=>assets.delete(new URL(url).pathname.slice(1))});
 const editorAudio=new EditorAudio({cacheDir:path.join(app.getPath('userData'),'previews'),resolve:id=>known.get(id),run,asset,revoke:url=>assets.delete(new URL(url).pathname.slice(1))});
+const playbackMedia=new PlaybackMedia({cacheDir:path.join(app.getPath('userData'),'previews'),run,probe,queue:job=>previewQueue.run(job)});
 const timeline=new TimelinePreviews({cacheDir:path.join(app.getPath('userData'),'previews'),resolve:id=>known.get(id),run,asset,revoke:url=>assets.delete(new URL(url).pathname.slice(1))});
 const updateCache=path.join(app.getPath('userData'),'updates');
 const updateContext=updateLaunchContext(process.argv,app.getVersion());let completedUpdateHealth=null;
@@ -137,7 +139,7 @@ function clipDescription(item,m,{preview=item.file}={}){
  const key=clipKey(item),v=m.streams.find(s=>s.codec_type==='video');if(!v)throw new Error('Video akışı yok');const audio=m.streams.filter(s=>s.codec_type==='audio');
  const [n,d]=(v.avg_frame_rate||'30/1').split('/').map(Number),seconds=Number(m.format.duration),cacheDir=path.join(app.getPath('userData'),'previews'),hash=crypto.createHash('sha256').update(key).digest('hex'),thumb=path.join(cacheDir,hash+'.jpg');
  let thumbnailJob;const thumbnail=()=>thumbnailJob||=(async()=>{await fs.mkdir(cacheDir,{recursive:true});if(!sync.existsSync(thumb))await previewQueue.run(()=>run('ffmpeg',['-v','error','-n','-ss',String(Math.min(1,seconds/2)),'-i',item.file,'-frames:v','1','-vf','scale=320:-2','-q:v','4',thumb])).catch(()=>{});return sync.existsSync(thumb)?thumb:undefined;})();
- return clipMetadata.decorate({...item,seconds,resolution:v.width+'x'+v.height,fps:n/d||30,tracks:audio.length,audio:audio.map((a,i)=>({index:i,name:a.tags?.title||a.tags?.name||a.tags?.handler_name||'Ses '+(i+1),codec:a.codec_name})),codec:v.codec_name,videoUrl:asset(preview),thumbnail:asset(sync.existsSync(thumb)?thumb:thumbnail),thumb:0,day:new Date(item.mtime).toDateString()===new Date().toDateString()?'today':'yesterday',clock:new Date(item.mtime).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})});
+ return clipMetadata.decorate({...item,seconds,resolution:v.width+'x'+v.height,fps:n/d||30,tracks:audio.length,audio:audio.map((a,i)=>({index:i,name:a.tags?.title||a.tags?.name||a.tags?.handler_name||'Ses '+(i+1),codec:a.codec_name})),codec:v.codec_name,videoUrl:asset(needsAudioPreview(m)?()=>playbackMedia.get(item.file,m):preview),thumbnail:asset(sync.existsSync(thumb)?thumb:thumbnail),thumb:0,day:new Date(item.mtime).toDateString()===new Date().toDateString()?'today':'yesterday',clock:new Date(item.mtime).toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})});
 }
 async function describe(item){
  const key=clipKey(item);if(cache.has(key)){const clip=clipMetadata.decorate(cache.get(key));known.set(clip.id,clip);cache.set(key,clip);return clip;}
@@ -159,12 +161,12 @@ async function updateClipMetadata(payload){
  const merged=new Map(librarySnapshot.filter(clip=>known.has(clip.id)).map(clip=>[clip.id,known.get(clip.id)]));for(const imported of known.values())if(imported.game==='İçe aktarılanlar'&&!merged.has(imported.id))merged.set(imported.id,imported);
  librarySnapshot=[...merged.values()].sort((a,b)=>b.mtime-a.mtime);return{clips:librarySnapshot};
 }
-function save(){if(updating||deviceChanging)return Promise.reject(new Error('Uygulama hazırlanıyor; birazdan tekrar dene.'));if(quitting)return Promise.reject(new Error('Uygulama kapanıyor.'));return trackOperation(async()=>{const detail=capture.recoveryRequired,clips=await saveClipFile({notifyOnSuccess:true});if(detail?.keepAlive&&capture.recoveryRequired===detail)capture.recoveryRequired=null;return clips;});}
-async function saveClipFile({notifyOnSuccess=false,source=capture}={}){if(deleting)throw new Error('Klipler siliniyor; birazdan tekrar dene.');if(saving)throw new Error('Önceki klip hâlâ kaydediliyor.');const automatic=source!==capture&&!!source.lastSnapshot?.automatic;if(!source.running&&!automatic&&!source.recoveryRequired?.keepAlive)throw new Error('Önce tamponu başlat.');saving=true;status('Klip hazırlanıyor…',{warnings:[]});
+function save(){if(updating||deviceChanging)return Promise.reject(new Error('Uygulama hazırlanıyor; birazdan tekrar dene.'));if(quitting)return Promise.reject(new Error('Uygulama kapanıyor.'));return trackOperation(async()=>{const detail=capture.recoveryRequired,clips=await saveClipFile({notifyOnRequest:true});if(detail?.keepAlive&&capture.recoveryRequired===detail)capture.recoveryRequired=null;return clips;});}
+async function saveClipFile({notifyOnRequest=false,source=capture}={}){if(deleting)throw new Error('Klipler siliniyor; birazdan tekrar dene.');if(saving)throw new Error('Önceki klip hâlâ kaydediliyor.');const automatic=source!==capture&&!!source.lastSnapshot?.automatic;if(!source.running&&!automatic&&!source.recoveryRequired?.keepAlive)throw new Error('Önce tamponu başlat.');saving=true;status('Klip hazırlanıyor…',{warnings:[],clipRequestCue:notifyOnRequest&&!automatic});
  try{
   const result=await saveReplay({capture:source,folder:state.folder,mode:state.mode,run,probe,defer:job=>{trackOperation(()=>new Promise(resolve=>setImmediate(resolve)).then(job));}}),clip=clipDescription(result.item,result.media);
   known.set(clip.id,clip);cache.set(clipKey(result.item),clip);publishedClips.set(clip.id,{revision:++publicationRevision,clip});const merged=new Map([clip,...librarySnapshot].map(item=>[item.id,item]));for(const imported of known.values())if(imported.game==='İçe aktarılanlar'&&!merged.has(imported.id))merged.set(imported.id,imported);librarySnapshot=[...merged.values()];
-  console.info('[replay-save]',JSON.stringify(result.timings));const warnings=result.warnings||[];status(warnings.length?'Klip kaydedildi. Bazı uygulamaların ayrı ses izi kullanılamadı; birleşik ses korundu.':'Klip kaydedildi',{saveTiming:result.timings,warnings,clipSavedCue:notifyOnSuccess&&!automatic});return librarySnapshot;
+  console.info('[replay-save]',JSON.stringify(result.timings));const warnings=result.warnings||[];status(warnings.length?'Klip kaydedildi. Bazı uygulamaların ayrı ses izi kullanılamadı; birleşik ses korundu.':'Klip kaydedildi',{saveTiming:result.timings,warnings});return librarySnapshot;
  }finally{saving=false;previewQueue.wake();}
 }
 async function preserveAutomaticReplay({detail,complete,fail}){

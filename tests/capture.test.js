@@ -1,8 +1,29 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {Capture}=require('../src/capture');
 function mock(config,windows=[]){const c=new Capture('unused'),calls=[];c.config=config;c.obs.call=async(type,data)=>{calls.push({type,...data});if(type==='GetInputList')return{inputs:[]};if(type==='GetSceneItemList')return{sceneItems:[{sourceName:'Klip Ses Tarayıcı',sceneItemId:1}]};if(type==='GetInputPropertiesListPropertyItems')return{propertyItems:windows};return{};};return{c,calls};}
+test('startup explicitly excludes Steam and other third-party overlays for both new and reused game sources',async()=>{
+ for(const existing of [false,true]){
+  const config={mode:'auto',resolution:'1920x1080',fps:'60',storage:'ram'}, {c,calls}=mock(config),call=c.obs.call,stop=new Error('stop before starting the replay buffer');
+  c.configure=async()=>{};c.obs.launch=async()=>{};c.refreshRecoveries=async()=>[];
+  c.obs.call=async(type,data)=>{
+   if(type==='GetSceneList')return{scenes:[{sceneName:'Klip'}]};if(type==='GetInputKindList')return{inputKinds:[]};
+   if(type==='GetInputList')return{inputs:existing?[{inputName:'Klip Oyun'}]:[]};
+   const result=await call(type,data);if(['CreateInput','SetInputSettings'].includes(type)&&data.inputName==='Klip Oyun')throw stop;return result;
+  };
+  await assert.rejects(c.start(config,'unused-buffer'),error=>error===stop);
+  const game=calls.find(call=>call.inputName==='Klip Oyun');assert.equal(game.inputSettings.capture_overlays,false);assert.equal(game.type,existing?'SetInputSettings':'CreateInput');
+  assert(!calls.some(call=>call.type==='StartReplayBuffer'));
+ }
+});
 test('Disabling separation keeps saved application slots muted',async()=>{const {c,calls}=mock({autoAudio:false,audioEnabled:{2:true,3:true}});await c.refreshAudio();for(const n of [2,3,4,5])assert(calls.some(x=>x.type==='SetInputMute'&&x.inputName==='Klip Ses '+n&&x.inputMuted===true));assert(!calls.some(x=>/^Klip Ses [2-5]$/.test(x.inputName)&&x.inputMuted===false));});
 test('Rainbow Six is assigned to isolated game track',async()=>{const {c}=mock({autoAudio:true},[{itemValue:'Rainbow Six:Game:RainbowSix.exe'}]);await c.refreshAudio();assert.equal(c.audio.find(x=>x.exe==='RainbowSix.exe').track,2);});
+test('Team Fortress 2 64-bit and 32-bit executables are recognized, named and followed as games',async()=>{
+ for(const exe of ['tf_win64.exe','tf.exe','TF_WIN64.EXE']){
+  const {c}=mock({mode:'auto'});c.running=true;c.refreshAudio=async()=>{};const targets=[],focuses=[];c.video={setTarget:async target=>targets.push(target),setFocus:async focus=>focuses.push(focus)};
+  await c.onFocus({exe,hwnd:42,title:'Team Fortress 2',class:'Valve001'});
+  assert.equal(c.lastGame,'Team Fortress 2');assert.equal(c.activeGameExe,exe);assert.equal(targets.length,1);assert.equal(focuses.at(-1),true);
+ }
+});
 test('combined system audio excludes the complete Ember process tree without muting other playback',async()=>{const {c,calls}=mock({autoAudio:true});c.syncOffsets={systemOffsetMs:-90,processOffsetMs:-110};await c.refreshAudio();const system=calls.find(x=>x.type==='CreateInput'&&x.inputName==='Klip Sistem Sesi');assert.equal(system.inputKind,'ember_system_audio_capture');assert.deepEqual(system.inputSettings,{target_process_id:process.pid});assert.equal(system.inputAudioSyncOffset,-110);assert(!calls.some(x=>x.inputKind==='wasapi_output_capture'));assert(!calls.some(x=>x.type==='SetInputMute'&&x.inputName==='Klip Sistem Sesi'&&x.inputMuted));});
 test('system exclusion failure aborts setup instead of falling back to notification-contaminated device audio',async()=>{const {c,calls}=mock({autoAudio:false});const original=c.obs.call;c.obs.call=async(type,data)=>{if(type==='CreateInput'&&data.inputKind==='ember_system_audio_capture')throw new Error('Exclusion unavailable');return original(type,data);};await assert.rejects(c.refreshAudio(),/Exclusion unavailable/);assert(!calls.some(x=>x.inputKind==='wasapi_output_capture'));});
 test('Engine loss stops buffer and foreground watcher',()=>{const {c}=mock({});let stopped=false,warning='';c.running=true;c.watcher={kill:()=>{stopped=true;}};c.obs.close=async()=>{};c.on('warning',s=>warning=s);c.obs.emit('engine-stopped');assert.equal(c.running,false);assert(stopped);assert(warning.includes('Tampon durdu'));});

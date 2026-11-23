@@ -52,7 +52,9 @@ class VideoSources {
    // Shared memory avoids that interop path; other games keep texture capture.
    this.quake=/^quakelive(?:_steam)?\.exe$/i.test(selector.split(':').at(-1));
    this.resumeFrameAfter=null;this.warnedUnavailable=false;
-   await this.obs.call('SetInputSettings',{inputName:'Klip Oyun',inputSettings:{capture_mode:'window',window:selector,priority:2,sli_compatibility:this.quake},overlay:true});
+   // Keep Steam's overlay out of the game feed when the hook supports it.
+   // WGC/display fallback cannot promise exclusion of already composited pixels.
+   await this.obs.call('SetInputSettings',{inputName:'Klip Oyun',inputSettings:{capture_mode:'window',window:selector,priority:2,sli_compatibility:this.quake,capture_overlays:false},overlay:true});
    if(this.windowId!=null)await this.obs.call('SetInputSettings',{inputName:'Klip Pencere',inputSettings:{window:selector,priority:2,method:2},overlay:true});
    this.pendingTarget=null;await this.visibility();this.target=selector;
    if(previous!=='game')this.onChange({method:'game',target:selector});

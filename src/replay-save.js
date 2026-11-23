@@ -21,12 +21,14 @@ const metadata=(args,index,title)=>args.push('-metadata:s:a:'+index,'title='+tit
 // Node quotes each argument for CreateProcess. This deliberately overestimates
 // escaping and leaves room for the executable/output options under its 32767 limit.
 const commandCost=args=>args.reduce((size,arg)=>size+String(arg).length*2+3,2048);
-function dynamicArgs(groups,output,{original,microphone=false}={}){
+function dynamicArgs(groups,output,{original,microphone=false,mixed=true,normalizeMicrophone=false}={}){
  const args=['-v','error','-n'];if(original)args.push('-i',original);for(const group of groups)args.push('-i',group.file);
- if(original)args.push('-map','0:v:0','-map','0:a:0');groups.forEach((group,i)=>args.push('-map',(i+Number(!!original))+':a'+(group.encoded?'':':0')));if(microphone)args.push('-map','0:a:5');args.push('-c','copy');
- let audio=original?1:0;if(original)metadata(args,0,'Birleşik ses');
- for(const group of groups){for(const track of group.tracks){if(!group.encoded){args.push('-c:a:'+audio,'aac','-b:a:'+audio,'256k');metadata(args,audio,String(track.name||track.id||'Uygulama'));}audio++;}}
- if(microphone)metadata(args,audio,'Mikrofon');args.push(output);return args;
+ if(original){args.push('-map','0:v:0');if(mixed)args.push('-map','0:a:0');}groups.forEach((group,i)=>args.push('-map',(i+Number(!!original))+':a'+(group.encoded?'':':0')));if(microphone)args.push('-map','0:a:5');args.push('-c','copy');
+ let audio=original&&mixed?1:0;if(audio)metadata(args,0,'Birleşik ses');
+ for(const group of groups){for(const track of group.tracks){if(!group.encoded){args.push('-c:a:'+audio,'aac','-b:a:'+audio,'256k','-ac:a:'+audio,'2','-ar:a:'+audio,'48000');metadata(args,audio,String(track.name||track.id||'Uygulama'));}audio++;}}
+ if(microphone){metadata(args,audio,'Mikrofon');if(normalizeMicrophone)args.push('-c:a:'+audio,'aac','-b:a:'+audio,'256k','-ac:a:'+audio,'2','-ar:a:'+audio,'48000');audio++;}
+ if(original&&!mixed)args.push('-metadata','ember_audio_layout=separate','-movflags','+use_metadata_tags','-disposition:a','default');
+ args.push(output);return args;
 }
 async function boundedAudioGroups(snapshot,original,microphone,staged,run){
  let groups=snapshot.tracks.map(track=>({file:track.file,tracks:[track],encoded:false}));
@@ -54,13 +56,20 @@ async function saveReplay({capture,folder,mode,run,probe,defer=job=>setImmediate
   // Claim native pinned PCM into owned recovery WAVs before touching the clip
   // destination: an unavailable library must not leave its audio snapshot pinned.
   if(capture.dynamicAudio){snapshot=await measure('audioSnapshotMs',()=>capture.snapshotAudio(original));cleanupSnapshot=await ownedSnapshot(capture,snapshot,original);warnings=Array.isArray(snapshot.warnings)?snapshot.warnings.map(warning=>typeof warning==='string'?warning:(warning?.name?warning.name+': ':'')+(warning?.message||'Ayrı ses izi kullanılamadı.')):[];}
+  // A source that could not attach has no native snapshot entry to warn about.
+  // Retain the safety mix if discovery or any process capture is incomplete.
+  if(capture.dynamicAudio&&(capture.audioFailures?.size||capture.audioWarningKeys?.size))warnings.push('Ayrı ses izi kullanılamadı.');
   const game=files.safeName(mode==='screen'?'Masaüstü':capture.lastGame),dir=path.join(folder,game);
   await fs.mkdir(dir,{recursive:true});const target=await files.unique(path.join(dir,new Date().toISOString().replace(/[:.]/g,'-')+'.mp4'));staged=path.join(dir,'.'+crypto.randomUUID()+'.mp4');
   if(capture.dynamicAudio){
    sourceMedia=await measure('sourceProbeMs',()=>probe(original));const sourceVideo=sourceMedia.streams?.find(s=>s.codec_type==='video'),sourceAudio=sourceMedia.streams?.filter(s=>s.codec_type==='audio')||[],microphone=capture.config?.audioEnabled?.[6]!==false;
    if(!sourceVideo?.width||!sourceVideo.height||!Number.isFinite(Number(sourceMedia.format?.duration))||Number(sourceMedia.format.duration)<=0||sourceAudio.length<(microphone?6:1))throw Error('Kaynak klibin video/ses akışları doğrulanamadı.');
-   const groups=await measure('audioMuxMs',()=>boundedAudioGroups(snapshot,original,microphone,staged,run));args=dynamicArgs(groups,staged,{original,microphone});
-   audioCount=1+snapshot.tracks.length+Number(microphone);
+   // A healthy automatic snapshot is an editing master: every source gets its
+   // own enabled stereo stream, without a duplicate mix on the Premiere timeline.
+   // Retain the full mix when separation is off or recovery reports missing stems.
+   const mixed=capture.config?.autoAudio===false||warnings.length>0,mic=sourceAudio[5],normalizeMicrophone=!!(microphone&&mic&&(mic.codec_name!=='aac'||mic.channels!==2||Number(mic.sample_rate)!==48000));
+   const groups=await measure('audioMuxMs',()=>boundedAudioGroups(snapshot,original,microphone,staged,run));args=dynamicArgs(groups,staged,{original,microphone,mixed,normalizeMicrophone});
+   audioCount=Number(mixed)+snapshot.tracks.length+Number(microphone);
   }else{
    args=['-v','error','-n','-i',original,'-map','0','-c','copy'];
    const titles=['Birleşik ses',...Array.from({length:4},(_,i)=>capture.audio.find(a=>a.track===i+2)?.name||['Oyun (bekleniyor)','Discord (bekleniyor)','Tarayıcı (bekleniyor)','Müzik (bekleniyor)'][i]),'Mikrofon'];

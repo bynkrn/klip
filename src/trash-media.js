@@ -1,8 +1,9 @@
 const fs=require('node:fs/promises'),path=require('node:path'),crypto=require('node:crypto');
+const {PlaybackMedia,needsAudioPreview}=require('./playback-media');
 
 // Deleted clips are deliberately kept outside the editable library registry.
 class TrashMedia{
- constructor({trash,cacheDir,run,probe,asset,revoke}){Object.assign(this,{trash,cacheDir,run,probe,asset,revoke});this.links=new Map();this.pending=new Map();this.jobs=new Map();this.blocked=new Set();this.active=0;this.waiters=[];}
+ constructor({trash,cacheDir,run,probe,asset,revoke,playback}){Object.assign(this,{trash,cacheDir,run,probe,asset,revoke});this.playback=playback||new PlaybackMedia({cacheDir,run,probe});this.links=new Map();this.pending=new Map();this.jobs=new Map();this.blocked=new Set();this.active=0;this.waiters=[];}
  urls(id){if(!this.links.has(id))this.links.set(id,{thumbnail:this.asset(()=>this.thumbnail(id))});return this.links.get(id);}
  entries(rows){const ids=new Set(rows.map(row=>row.id));for(const id of this.links.keys())if(!ids.has(id))this.invalidate(id);return rows.map(row=>({...row,thumbnail:this.urls(row.id).thumbnail}));}
  invalidate(id){const entry=this.links.get(id);if(entry){this.revoke(entry.thumbnail);if(entry.videoUrl)this.revoke(entry.videoUrl);this.links.delete(id);}}
@@ -32,7 +33,8 @@ class TrashMedia{
   const urls=this.urls(id),key=this.signature(row,stat);if(urls.metadata&&urls.key===key)return urls.metadata;
   const m=await this.probe(row.physicalPath),v=m.streams.find(s=>s.codec_type==='video');if(!v)throw new Error('Bu klipte okunabilir video akışı bulunamadı.');
   const [n,d]=(v.avg_frame_rate||'30/1').split('/').map(Number);let source=row.physicalPath;
-  if(path.extname(row.originalPath).toLowerCase()!=='.mp4'){
+  if(needsAudioPreview(m))source=await this.playback.get(row.physicalPath,m);
+  else if(path.extname(row.originalPath).toLowerCase()!=='.mp4'){
    const hash=crypto.createHash('sha256').update('trash-preview|'+key).digest('hex');source=await this.generated(path.join(this.cacheDir,hash+'.mp4'),['-v','error','-n','-i',row.physicalPath,'-map','0:v:0','-map','0:a:0?','-c','copy','-movflags','+faststart']);
   }
   if(urls.videoUrl)this.revoke(urls.videoUrl);urls.videoUrl=this.asset(source);urls.key=key;

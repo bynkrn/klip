@@ -1,5 +1,9 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path');
 const {TrashMedia}=require('../src/trash-media');
+test('independent audio in the recycle bin uses all source audio for playback without editing the deleted original',async t=>{
+ const f=await fixture();t.after(f.cleanup);const source={streams:[{codec_type:'video',width:1920,height:1080,avg_frame_rate:'60/1'},{codec_type:'audio'},{codec_type:'audio'}],format:{duration:'12',tags:{ember_audio_layout:'separate'}}};let mixes=0;f.media.probe=async()=>source;f.media.playback={get:async(file,m)=>{mixes++;assert.equal(file,f.file);assert.equal(m,source);return path.join(f.dir,'mixed-playback.mp4');}};
+ const preview=await f.media.preview('bin-a');assert.equal(mixes,1);assert.equal(f.state.links.get(preview.videoUrl),path.join(f.dir,'mixed-playback.mp4'));assert.equal(await fs.readFile(f.file,'utf8'),'owned original bytes');
+});
 async function fixture(){
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'klip-trash-media-')),file=path.join(dir,'deleted.mp4');await fs.writeFile(file,'owned original bytes');
  const state={rows:[{id:'bin-a',originalPath:'C:\\clips\\Valorant\\clip.mp4',physicalPath:file}],calls:[],links:new Map(),next:0};

@@ -5,10 +5,15 @@ function audioSelection(clip,tracks){
  if(combined&&indexes.includes(combined.index)&&indexes.length>1)throw new Error('Birleşik ses ve ayrı ses izleri birlikte seçilemez.');
  return indexes;
 }
-function audioOutput(clip,tracks,volumes={},{alignTimeline=false}={}){
+function audioOutput(clip,tracks,volumes={},{alignTimeline=false,independent=false}={}){
  const indexes=audioSelection(clip,tracks),name=i=>clip.audio?.find(t=>t.index===i)?.name||'Ses '+(i+1);
  if(!volumes||typeof volumes!=='object'||Array.isArray(volumes)||Object.entries(volumes).some(([index,gain])=>!/^\d+$/.test(index)||Number(index)>=clip.tracks||typeof gain!=='number'||!Number.isFinite(gain)||gain<0||gain>1))throw new Error('Geçersiz ses seviyesi.');
  const gain=i=>volumes[i]??1;
+ if(independent){
+  if(!indexes.length)return{args:[],names:[]};
+  const filters=indexes.map(i=>'[0:a:'+i+']'+(alignTimeline?'aresample=async=1:first_pts=0,':'')+'volume='+gain(i)+'[klipstem'+i+']');
+  return{args:['-filter_complex',filters.join(';'),...indexes.flatMap(i=>['-map','[klipstem'+i+']'])],names:indexes.map(name)};
+ }
  if(alignTimeline&&indexes.length){
   // amix combines samples, not independent stream start offsets. Pad each
   // decoded stream to the common video timeline before mixing or splitting.

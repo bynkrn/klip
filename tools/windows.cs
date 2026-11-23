@@ -65,7 +65,7 @@ class ForegroundWatcher {
         string id;return MonitorIds.TryGetValue(MonitorFromWindow(window,2),out id)?id:null;
     }
     static bool IsGame(string exe,string target) {
-        return !String.IsNullOrEmpty(target)?String.Equals(exe,target,StringComparison.OrdinalIgnoreCase):Regex.IsMatch(exe,@"^(VALORANT.*|cs2|quakelive.*|ddnet.*|r5apex|FortniteClient.*|Overwatch|dota2|RocketLeague|RainbowSix.*)\.exe$",RegexOptions.IgnoreCase);
+        return !String.IsNullOrEmpty(target)?String.Equals(exe,target,StringComparison.OrdinalIgnoreCase):Regex.IsMatch(exe,@"^(VALORANT.*|cs2|tf_win64|tf|quakelive.*|ddnet.*|r5apex|FortniteClient.*|Overwatch|dota2|RocketLeague|RainbowSix.*)\.exe$",RegexOptions.IgnoreCase|RegexOptions.CultureInvariant);
     }
     static Window ReadWindow(IntPtr h,bool monitor) {
         if(h==IntPtr.Zero || !IsWindow(h))return null;

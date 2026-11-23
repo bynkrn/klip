@@ -24,6 +24,25 @@ test('disabling microphone omits its native input while retaining all dynamic ap
  const result=await saveReplay({capture,folder:path.join(root,'clips'),run:async(_tool,values)=>{args=values;await fs.writeFile(values.at(-1),'dynamic container');},probe:async file=>file===original?inputMedia:outputMedia,defer:()=>{}});
  assert(!args.includes('0:a:5'));assert(!args.includes('title=Mikrofon'));assert.equal(result.media.streams.filter(s=>s.codec_type==='audio').length,9);
 });
+test('a complete automatic snapshot publishes only independent application stems and microphone for editing',async t=>{
+ const {root,original,capture,inputMedia,outputMedia,tracks}=await dynamicFixture(t,3);capture.config.autoAudio=true;capture.snapshotAudio=async()=>({folder:path.dirname(tracks[0].file),tracks,warnings:[]});outputMedia.streams.splice(1,1);let args;
+ const result=await saveReplay({capture,folder:path.join(root,'clips'),run:async(_tool,values)=>{args=values;await fs.writeFile(values.at(-1),'independent audio');},probe:async file=>file===original?inputMedia:outputMedia,defer:()=>{}});
+ assert.deepEqual(args.flatMap((value,index)=>value==='-map'?[args[index+1]]:[]),['0:v:0',...tracks.map((_,i)=>(i+1)+':a:0'),'0:a:5']);
+ assert(!args.includes('title=Birleşik ses'));assert(args.includes('ember_audio_layout=separate'));assert.equal(result.media.streams.filter(s=>s.codec_type==='audio').length,4);
+ assert.equal(args[args.indexOf('-disposition:a')+1],'default','Premiere must see every independent source as enabled');
+});
+test('a silent complete snapshot can publish video alone without adding a duplicate or empty mixed track',async t=>{
+ const {root,original,capture,inputMedia,outputMedia,snapshotFolder}=await dynamicFixture(t,0,false);capture.config.autoAudio=true;capture.snapshotAudio=async()=>({folder:snapshotFolder,tracks:[],warnings:[]});outputMedia.streams.splice(1,1);let args;
+ const result=await saveReplay({capture,folder:path.join(root,'clips'),run:async(_tool,values)=>{args=values;await fs.writeFile(values.at(-1),'silent video');},probe:async file=>file===original?inputMedia:outputMedia,defer:()=>{}});
+ assert(!args.includes('0:a:0'));assert.equal(result.media.streams.length,1);
+});
+test('failed process-audio attachments or partial session enumeration retain mixed fallback even when the native snapshot reports no warnings',async t=>{
+ for(const failures of [{audioFailures:new Map([['app:failed:42',{attempt:1}]])},{audioWarningKeys:new Set(['A Windows audio session could not be inspected.'])}]){
+  const {root,original,capture,inputMedia,outputMedia,tracks,snapshotFolder}=await dynamicFixture(t,2);Object.assign(capture,failures);capture.snapshotAudio=async()=>({folder:snapshotFolder,tracks,warnings:[]});let args;
+  const result=await saveReplay({capture,folder:path.join(root,'clips'),run:async(_tool,values)=>{args=values;await fs.writeFile(values.at(-1),'fallback with all available stems');},probe:async file=>file===original?inputMedia:outputMedia,defer:()=>{}});
+  assert(args.includes('0:a:0'));assert(args.includes('title=Birleşik ses'));assert(result.warnings.length>0);assert(!args.includes('ember_audio_layout=separate'));
+ }
+});
 test('dynamic verification preserves native replay and all snapshots on missing tracks, dimensions or duration mismatch',async t=>{
  for(const change of [out=>out.streams.pop(),out=>out.streams[0]={...out.streams[0],width:1280},out=>out.format.duration='15',out=>out.streams[0]={...out.streams[0],duration:'8'},out=>out.streams[2].duration='6']){
   const {root,original,snapshotFolder,capture,inputMedia,outputMedia}=await dynamicFixture(t,8),jobs=[];change(outputMedia);

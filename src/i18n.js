@@ -3,6 +3,7 @@
  // Only catalogued UI copy is translated. Arbitrary user text is never title-cased.
  const normalize=text=>String(text).normalize('NFC').replace(/[’‘]/g,"'").replace(/\.\.\./g,'…').replace(/\s+/g,' ').trim().toLocaleLowerCase('tr-TR');
  const rows=[
+ ['Ayrı ses izi kullanılamadı.','A separate audio track was unavailable.'],
  ['Güncelleme tamamlandı; tampon hazır.','Update completed; the replay buffer is ready.'],['Başka bir güncelleme işlemi sürüyor.','Another update is already running.'],
  ['Geçersiz Ekran Ayarı.','Invalid Display Setting.'],['Geçersiz Klip Adı veya Etiketi.','Invalid Clip Name Or Tag.'],['Klip Adı veya Etiketi Çok Uzun ya da Boş.','The Clip Name Or Tag Is Too Long Or Empty.'],['Geçersiz Klip Bilgisi.','Invalid Clip Details.'],['Geçersiz Favori Bilgisi.','Invalid Favorite Setting.'],['En Fazla 20 Etiket Kullanılabilir.','You Can Use Up To 20 Tags.'],['Klip Bilgileri Okunamadı; Mevcut Dosya Korundu.','Clip Details Could Not Be Read; The Existing File Was Preserved.'],['Klip Bilgileri İçin Ayrılan Alan Dolu.','The Storage For Clip Details Is Full.'],['Ad Değiştirmek İçin Tek Bir Klip Seç.','Select One Clip To Rename.'],['Klip Dosyası Bulunamadı.','The Clip File Could Not Be Found.'],['Kaydedilecek Etkin Ekran Bulunamadı.','No Active Display Is Available To Record.'],
  ['Video Editörünü Seç','Choose Video Editor'],
